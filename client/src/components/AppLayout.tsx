@@ -30,7 +30,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col fixed inset-y-0 z-50">
         <div className="p-6 flex items-center gap-2 border-b border-border/50">
@@ -70,8 +70,8 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 flex flex-col min-h-screen">
-        <header className="h-16 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-40 px-8 flex items-center justify-between">
+      <main className="flex-1 ml-64 flex flex-col h-full overflow-hidden">
+        <header className="h-16 border-b border-border/50 bg-background/80 backdrop-blur-sm flex-none top-0 z-40 px-8 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           
           <div className="flex items-center gap-4">
@@ -85,7 +85,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
           </div>
         </header>
 
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>

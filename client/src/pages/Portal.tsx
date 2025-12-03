@@ -48,10 +48,10 @@ const apps = [
 
 export default function Portal() {
   return (
-    <div className="min-h-screen w-full bg-background flex overflow-hidden">
+    <div className="h-screen w-full bg-background flex">
       {/* Left Content */}
-      <div className="w-full lg:w-[55%] flex flex-col justify-center p-8 lg:p-16 relative z-10">
-        <div className="max-w-2xl mx-auto w-full space-y-8">
+      <div className="w-full lg:w-[55%] h-full flex flex-col p-8 lg:p-16 relative z-10 overflow-y-auto">
+        <div className="max-w-2xl mx-auto w-full space-y-8 my-auto">
           <div className="space-y-2">
             <div className="flex items-center gap-2 mb-6">
               <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
