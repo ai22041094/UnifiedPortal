@@ -61,7 +61,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
 
         <div className="p-4 border-t border-border/50">
           <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:text-destructive/80 hover:bg-destructive/10" asChild>
-            <Link href="/">
+            <Link href="/portal">
               <LogOut className="h-4 w-4" />
               Back to Portal
             </Link>
