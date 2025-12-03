@@ -24,9 +24,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex overflow-hidden bg-background">
+    <div className="h-screen w-full flex bg-background">
       {/* Left Side - Visuals */}
-      <div className="hidden lg:flex lg:w-[60%] relative overflow-hidden bg-primary/5">
+      <div className="hidden lg:flex lg:w-[60%] h-full relative overflow-hidden bg-primary/5">
          <div className="absolute inset-0 bg-primary/10 mix-blend-overlay z-10" />
         <img 
           src={portalBg} 
@@ -52,7 +52,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-full lg:w-[40%] flex items-center justify-center p-8 relative">
+      <div className="w-full lg:w-[40%] h-full flex items-center justify-center p-8 relative overflow-y-auto">
         {/* Mobile Logo */}
         <div className="absolute top-8 left-8 lg:hidden flex items-center gap-2">
            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
