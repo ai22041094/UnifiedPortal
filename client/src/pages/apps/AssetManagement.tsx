@@ -73,6 +73,16 @@ import {
   Smartphone,
   Printer,
   Construction,
+  Settings,
+  Database,
+  UserCog,
+  ShieldCheck,
+  Lock,
+  Palette,
+  BellRing,
+  HardDrive,
+  Globe,
+  Mail,
 } from "lucide-react";
 
 interface MenuItem {
@@ -89,6 +99,15 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/apps/alm",
+  },
+  {
+    id: "masters",
+    title: "Masters",
+    icon: Database,
+    children: [
+      { id: "user-master", title: "User Master", icon: UserCog, href: "/apps/alm/masters/user-master" },
+      { id: "role-master", title: "Role Master", icon: ShieldCheck, href: "/apps/alm/masters/role-master" },
+    ],
   },
   {
     id: "alm-lifecycle",
@@ -175,6 +194,20 @@ const menuItems: MenuItem[] = [
       { id: "predictive-analytics", title: "Predictive Analytics", icon: LineChart, href: "/apps/alm/analytics/predictive-analytics" },
       { id: "cost-optimization", title: "Cost Optimization", icon: Wallet, href: "/apps/alm/analytics/cost-optimization" },
       { id: "custom-reporting", title: "Custom Reporting", icon: FileBarChart, href: "/apps/alm/analytics/custom-reporting" },
+    ],
+  },
+  {
+    id: "settings",
+    title: "Settings",
+    icon: Settings,
+    children: [
+      { id: "general-settings", title: "General", icon: Settings, href: "/apps/alm/settings/general" },
+      { id: "security-settings", title: "Security", icon: Lock, href: "/apps/alm/settings/security" },
+      { id: "notifications-settings", title: "Notifications", icon: BellRing, href: "/apps/alm/settings/notifications" },
+      { id: "appearance-settings", title: "Appearance", icon: Palette, href: "/apps/alm/settings/appearance" },
+      { id: "backup-settings", title: "Backup & Recovery", icon: HardDrive, href: "/apps/alm/settings/backup" },
+      { id: "localization-settings", title: "Localization", icon: Globe, href: "/apps/alm/settings/localization" },
+      { id: "email-settings", title: "Email Configuration", icon: Mail, href: "/apps/alm/settings/email" },
     ],
   },
 ];
