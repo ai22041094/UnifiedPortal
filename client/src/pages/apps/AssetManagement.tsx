@@ -105,8 +105,8 @@ const menuItems: MenuItem[] = [
     title: "Masters",
     icon: Database,
     children: [
-      { id: "user-master", title: "User Master", icon: UserCog, href: "/apps/alm/masters/user-master" },
-      { id: "role-master", title: "Role Master", icon: ShieldCheck, href: "/apps/alm/masters/role-master" },
+      { id: "user-master", title: "User Master", icon: UserCog, href: "/admin/users" },
+      { id: "role-master", title: "Role Master", icon: ShieldCheck, href: "/admin/roles" },
     ],
   },
   {
