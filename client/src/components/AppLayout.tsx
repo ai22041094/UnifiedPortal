@@ -12,6 +12,7 @@ import {
   Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, title, appName }: AppLayoutProps) {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { icon: Home, label: "Dashboard", href: `/apps/${appName.toLowerCase().replace(/\s/g, '-')}` },
@@ -28,6 +30,8 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
     { icon: Package, label: "Assets", href: "#" },
     { icon: Settings, label: "Settings", href: "#" },
   ];
+
+  const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
@@ -59,12 +63,20 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border/50">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:text-destructive/80 hover:bg-destructive/10" asChild>
+        <div className="p-4 border-t border-border/50 space-y-2">
+          <Button variant="ghost" className="w-full justify-start gap-3" asChild>
             <Link href="/portal">
-              <LogOut className="h-4 w-4" />
+              <Home className="h-4 w-4" />
               Back to Portal
             </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
           </Button>
         </div>
       </aside>
@@ -80,7 +92,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
               <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
             </Button>
             <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-medium">
-              JD
+              {userInitials}
             </div>
           </div>
         </header>

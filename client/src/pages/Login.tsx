@@ -6,21 +6,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { LockKeyhole, Mail, ArrowRight } from "lucide-react";
+import { LockKeyhole, User, ArrowRight } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 import portalBg from "@assets/generated_images/blue_corporate_tech_background_with_city_and_network_lines.png";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const { login } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate network delay for effect
-    setTimeout(() => {
+
+    try {
+      await login(username, password);
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      setLocation("/portal");
-    }, 1000);
+    }
   };
 
   return (
@@ -71,20 +84,21 @@ export default function LoginPage() {
           <CardContent className="px-0">
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="email" 
-                    placeholder="name@company.com" 
-                    type="email" 
-                    className="pl-10" 
-                    required 
-                    defaultValue="admin@pcvisor.com"
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="username"
+                    placeholder="Enter your username"
+                    type="text"
+                    className="pl-10"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
@@ -94,12 +108,13 @@ export default function LoginPage() {
                 </div>
                 <div className="relative">
                   <LockKeyhole className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    className="pl-10" 
-                    required 
-                    defaultValue="password123"
+                  <Input
+                    id="password"
+                    type="password"
+                    className="pl-10"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
               </div>
