@@ -74,9 +74,34 @@ Preferred communication style: Simple, everyday language.
 - **PostgreSQL** as the primary database (via Neon serverless)
 - Connection managed through environment variable `DATABASE_URL`
 - Database schema includes:
-  - Users table with UUID primary keys, username, hashed password, and timestamps
+  - Users table with UUID primary keys, username, hashed password, email, fullName, roleId, isActive, and timestamps
+  - Roles table with UUID primary keys, name, description, permissions (JSON array), isActive, and timestamps
   - Username uniqueness constraint
+  - Role name uniqueness constraint
   - Automatic UUID generation using PostgreSQL's `gen_random_uuid()`
+
+### Administration Features
+
+**User Master** (`/admin/users`)
+- Full CRUD operations for user management
+- Role assignment to users
+- User activation/deactivation
+- Password management with secure hashing (bcrypt)
+- Search and filter capabilities
+
+**Role Master** (`/admin/roles`)
+- Full CRUD operations for role management
+- Menu permission configuration using centralized menu system
+- Role activation/deactivation
+- Permissions stored as JSON array
+
+**Menu Configuration**
+- Centralized menu configuration in `client/src/lib/menu-config.ts`
+- Hierarchical menu structure supporting nested items
+- Used for role-based permission assignment
+
+**Admin Credentials**
+- Default admin user: username `admin`, password `P@ssw0rd@123`
 
 **Schema Design**
 - Type-safe schema definitions using Drizzle ORM
