@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { useRBAC } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import {
   SidebarProvider,
@@ -415,10 +416,30 @@ function getPageTitle(path: string): string {
 export default function AssetManagement() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { hasPermission, isAdmin } = useRBAC();
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
   
   const isDashboard = location === "/apps/alm";
   const pageTitle = getPageTitle(location);
+
+  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
+    return items
+      .map((item) => {
+        if (item.children) {
+          const filteredChildren = filterMenuItems(item.children);
+          if (filteredChildren.length === 0) return null;
+          return { ...item, children: filteredChildren };
+        }
+        if (item.id === "dashboard") return item;
+        if (isAdmin) return item;
+        const permissionId = `alm.${item.id}`;
+        if (hasPermission(permissionId) || hasPermission(item.id)) return item;
+        return null;
+      })
+      .filter(Boolean) as MenuItem[];
+  };
+
+  const filteredMenuItems = useMemo(() => filterMenuItems(menuItems), [hasPermission, isAdmin]);
 
   const sidebarStyle = {
     "--sidebar-width": "18rem",
@@ -443,7 +464,7 @@ export default function AssetManagement() {
               <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {menuItems.map((item) => (
+                  {filteredMenuItems.map((item) => (
                     <TopLevelMenuItem
                       key={item.id}
                       item={item}

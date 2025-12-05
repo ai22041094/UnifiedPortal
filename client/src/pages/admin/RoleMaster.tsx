@@ -43,6 +43,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -206,7 +207,7 @@ export default function RoleMaster() {
 
     return (
       <div className="space-y-2">
-        <FormLabel>Menu Permissions</FormLabel>
+        <Label>Menu Permissions</Label>
         <div className="border rounded-md max-h-64 overflow-y-auto">
           <Accordion type="multiple" className="w-full">
             {MENU_ITEMS.map((group) => {

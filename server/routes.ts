@@ -14,6 +14,32 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const user = req.user as SafeUser;
+  
+  if (user.username === "admin") {
+    return next();
+  }
+  
+  if (user.roleId) {
+    const role = await storage.getRole(user.roleId);
+    if (role?.name?.toLowerCase() === "admin") {
+      return next();
+    }
+    
+    const permissions = (role?.permissions as string[]) || [];
+    if (permissions.includes("admin.user-master") || permissions.includes("admin.role-master")) {
+      return next();
+    }
+  }
+  
+  return res.status(403).json({ message: "Access denied. Admin privileges required." });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -97,8 +123,38 @@ export async function registerRoutes(
     res.json({ user: req.user });
   });
 
+  app.get("/api/auth/permissions", requireAuth, async (req, res, next) => {
+    try {
+      const user = req.user as SafeUser;
+      
+      if (user.username === "admin") {
+        return res.json({ 
+          permissions: ["*"], 
+          isAdmin: true,
+          roleName: "Admin"
+        });
+      }
+      
+      if (user.roleId) {
+        const role = await storage.getRole(user.roleId);
+        if (role) {
+          const isAdmin = role.name?.toLowerCase() === "admin";
+          return res.json({ 
+            permissions: (role.permissions as string[]) || [],
+            isAdmin,
+            roleName: role.name
+          });
+        }
+      }
+      
+      res.json({ permissions: [], isAdmin: false, roleName: null });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Role routes
-  app.get("/api/roles", requireAuth, async (req, res, next) => {
+  app.get("/api/roles", requireAdmin, async (req, res, next) => {
     try {
       const roles = await storage.getAllRoles();
       res.json(roles);
@@ -107,7 +163,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/roles/:id", requireAuth, async (req, res, next) => {
+  app.get("/api/roles/:id", requireAdmin, async (req, res, next) => {
     try {
       const role = await storage.getRole(req.params.id);
       if (!role) {
@@ -119,7 +175,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/roles", requireAuth, async (req, res, next) => {
+  app.post("/api/roles", requireAdmin, async (req, res, next) => {
     try {
       const result = insertRoleSchema.safeParse(req.body);
       if (!result.success) {
@@ -140,7 +196,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/roles/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/roles/:id", requireAdmin, async (req, res, next) => {
     try {
       const result = updateRoleSchema.safeParse(req.body);
       if (!result.success) {
@@ -166,7 +222,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/roles/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/roles/:id", requireAdmin, async (req, res, next) => {
     try {
       const deleted = await storage.deleteRole(req.params.id);
       if (!deleted) {
@@ -179,7 +235,7 @@ export async function registerRoutes(
   });
 
   // User management routes
-  app.get("/api/users", requireAuth, async (req, res, next) => {
+  app.get("/api/users", requireAdmin, async (req, res, next) => {
     try {
       const users = await storage.getAllUsers();
       const safeUsers = users.map(getSafeUser);
@@ -189,7 +245,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/users/:id", requireAuth, async (req, res, next) => {
+  app.get("/api/users/:id", requireAdmin, async (req, res, next) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -201,7 +257,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/users", requireAuth, async (req, res, next) => {
+  app.post("/api/users", requireAdmin, async (req, res, next) => {
     try {
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
@@ -227,7 +283,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/users/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/users/:id", requireAdmin, async (req, res, next) => {
     try {
       const result = updateUserSchema.safeParse(req.body);
       if (!result.success) {
@@ -253,7 +309,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/users/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/users/:id", requireAdmin, async (req, res, next) => {
     try {
       const currentUser = req.user as SafeUser;
       if (currentUser.id === req.params.id) {
@@ -271,7 +327,7 @@ export async function registerRoutes(
   });
 
   // Password reset route
-  app.patch("/api/users/:id/password", requireAuth, async (req, res, next) => {
+  app.patch("/api/users/:id/password", requireAdmin, async (req, res, next) => {
     try {
       const schema = z.object({
         password: z.string().min(6, "Password must be at least 6 characters"),
