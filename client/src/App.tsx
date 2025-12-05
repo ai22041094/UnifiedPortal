@@ -32,6 +32,11 @@ function Router() {
           <AssetManagement />
         </ProtectedRoute>
       </Route>
+      <Route path="/apps/alm/:rest*">
+        <ProtectedRoute>
+          <AssetManagement />
+        </ProtectedRoute>
+      </Route>
       <Route path="/apps/service-desk">
         <ProtectedRoute>
           <ServiceDesk />
