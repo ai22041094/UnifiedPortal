@@ -16,7 +16,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center">
-        <Spinner size="lg" />
+        <Spinner className="size-8" />
       </div>
     );
   }
