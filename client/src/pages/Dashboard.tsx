@@ -10,7 +10,9 @@ import {
   Users,
   Clock,
   Activity,
-  TrendingUp
+  TrendingUp,
+  Shield,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -54,6 +56,27 @@ const apps = [
     color: "text-sky-500",
     bgColor: "bg-sky-500/10",
   }
+];
+
+const adminItems = [
+  {
+    id: "user-master",
+    title: "User Master",
+    description: "Manage users, assign roles and permissions",
+    icon: Users,
+    href: "/admin/users",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+  },
+  {
+    id: "role-master",
+    title: "Role Master",
+    description: "Configure roles and menu access permissions",
+    icon: Shield,
+    href: "/admin/roles",
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+  },
 ];
 
 const stats = [
@@ -172,7 +195,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold mb-4">Your Applications</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {apps.map((app) => (
-                <Link key={app.id} href={app.href}>
+                <Link key={app.id} href={app.href} data-testid={`link-app-${app.id}`}>
                   <Card className="h-full hover-elevate cursor-pointer group transition-all duration-300">
                     <CardHeader className="space-y-3">
                       <div className={`h-12 w-12 rounded-lg ${app.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
@@ -183,6 +206,31 @@ export default function Dashboard() {
                     <CardContent>
                       <CardDescription className="text-sm">
                         {app.description}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {/* Administration Section */}
+            <h2 className="text-xl font-semibold mb-4 mt-8 flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Administration
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adminItems.map((item) => (
+                <Link key={item.id} href={item.href} data-testid={`link-admin-${item.id}`}>
+                  <Card className="h-full hover-elevate cursor-pointer group transition-all duration-300">
+                    <CardHeader className="space-y-3">
+                      <div className={`h-12 w-12 rounded-lg ${item.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        <item.icon className={`h-6 w-6 ${item.color}`} />
+                      </div>
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="text-sm">
+                        {item.description}
                       </CardDescription>
                     </CardContent>
                   </Card>

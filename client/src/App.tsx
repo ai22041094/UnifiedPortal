@@ -12,6 +12,8 @@ import CustomPortal from "@/pages/apps/CustomPortal";
 import AssetManagement from "@/pages/apps/AssetManagement";
 import ServiceDesk from "@/pages/apps/ServiceDesk";
 import EPM from "@/pages/apps/EPM";
+import UserMaster from "@/pages/admin/UserMaster";
+import RoleMaster from "@/pages/admin/RoleMaster";
 
 function Router() {
   return (
@@ -20,6 +22,16 @@ function Router() {
       <Route path="/portal">
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/users">
+        <ProtectedRoute>
+          <UserMaster />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/roles">
+        <ProtectedRoute>
+          <RoleMaster />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">
