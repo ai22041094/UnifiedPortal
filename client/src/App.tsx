@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import NotFound from "@/pages/not-found";
-import Portal from "@/pages/Portal";
+import Dashboard from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
 import CustomPortal from "@/pages/apps/CustomPortal";
 import AssetManagement from "@/pages/apps/AssetManagement";
@@ -19,7 +19,7 @@ function Router() {
       <Route path="/" component={LoginPage} />
       <Route path="/portal">
         <ProtectedRoute>
-          <Portal />
+          <Dashboard />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">
