@@ -102,36 +102,6 @@ export const MENU_ITEMS: MenuGroup[] = [
         href: "/apps/alm",
       },
       {
-        id: "alm.assets",
-        label: "Asset Register",
-        icon: Package,
-        href: "/apps/alm/assets",
-      },
-      {
-        id: "alm.inventory",
-        label: "Inventory",
-        icon: Boxes,
-        href: "/apps/alm/inventory",
-      },
-      {
-        id: "alm.lifecycle",
-        label: "Lifecycle Tracking",
-        icon: Clock,
-        href: "/apps/alm/lifecycle",
-      },
-      {
-        id: "alm.maintenance",
-        label: "Maintenance",
-        icon: Wrench,
-        href: "/apps/alm/maintenance",
-      },
-      {
-        id: "alm.depreciation",
-        label: "Depreciation",
-        icon: FileText,
-        href: "/apps/alm/depreciation",
-      },
-      {
         id: "alm.planning",
         label: "Planning",
         icon: FileText,
@@ -148,6 +118,36 @@ export const MENU_ITEMS: MenuGroup[] = [
         label: "Operations",
         icon: Settings,
         href: "/apps/alm/operations",
+      },
+      {
+        id: "alm.ops-asset-register",
+        label: "Asset Register",
+        icon: Package,
+        href: "/apps/alm/operations/asset-register",
+      },
+      {
+        id: "alm.ops-inventory",
+        label: "Inventory",
+        icon: Boxes,
+        href: "/apps/alm/operations/inventory",
+      },
+      {
+        id: "alm.ops-lifecycle",
+        label: "Lifecycle Tracking",
+        icon: Clock,
+        href: "/apps/alm/operations/lifecycle-tracking",
+      },
+      {
+        id: "alm.ops-depreciation",
+        label: "Depreciation",
+        icon: FileText,
+        href: "/apps/alm/operations/depreciation",
+      },
+      {
+        id: "alm.maintenance",
+        label: "Maintenance",
+        icon: Wrench,
+        href: "/apps/alm/maintenance",
       },
       {
         id: "alm.decommissioning",

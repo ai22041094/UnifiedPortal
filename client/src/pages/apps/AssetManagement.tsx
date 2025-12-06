@@ -148,6 +148,10 @@ const menuItems: MenuItem[] = [
         title: "Operations",
         icon: Play,
         children: [
+          { id: "asset-register", title: "Asset Register", icon: Package, href: "/apps/alm/operations/asset-register" },
+          { id: "inventory", title: "Inventory", icon: Package, href: "/apps/alm/operations/inventory" },
+          { id: "lifecycle-tracking", title: "Lifecycle Tracking", icon: RefreshCw, href: "/apps/alm/operations/lifecycle-tracking" },
+          { id: "depreciation", title: "Depreciation", icon: FileText, href: "/apps/alm/operations/depreciation" },
           { id: "deployment", title: "Seamless Deployment & Integration", icon: Puzzle, href: "/apps/alm/operations/deployment" },
           { id: "asset-assignment", title: "Asset Assignment & Accountability", icon: Users, href: "/apps/alm/operations/asset-assignment" },
           { id: "performance-monitoring", title: "Performance Monitoring", icon: Activity, href: "/apps/alm/operations/performance-monitoring" },
@@ -418,8 +422,12 @@ function getPageTitle(path: string): string {
 export default function AssetManagement() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const { hasPermission, isAdmin } = useRBAC();
+  const { hasPermission, isAdmin, permissions } = useRBAC();
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
+  
+  if (!isAdmin && !hasAppAccess(permissions, "alm")) {
+    return <AccessDenied appName="Asset Lifecycle Management" />;
+  }
   
   const isDashboard = location === "/apps/alm";
   const pageTitle = getPageTitle(location);
