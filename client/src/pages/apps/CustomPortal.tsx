@@ -1,9 +1,18 @@
 import AppLayout from "@/components/AppLayout";
+import AccessDenied from "@/components/AccessDenied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import { useRBAC } from "@/lib/rbac";
+import { hasAppAccess } from "@/lib/menu-config";
 
 export default function CustomPortal() {
+  const { permissions, isAdmin } = useRBAC();
+  
+  if (!isAdmin && !hasAppAccess(permissions, "portal")) {
+    return <AccessDenied appName="Custom Portal" />;
+  }
+
   return (
     <AppLayout title="Custom Portal Dashboard" appName="Custom Portal">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

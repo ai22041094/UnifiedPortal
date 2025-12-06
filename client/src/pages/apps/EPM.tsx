@@ -1,8 +1,17 @@
 import AppLayout from "@/components/AppLayout";
+import AccessDenied from "@/components/AccessDenied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Users, Clock, Target } from "lucide-react";
+import { useRBAC } from "@/lib/rbac";
+import { hasAppAccess } from "@/lib/menu-config";
 
 export default function EPM() {
+  const { permissions, isAdmin } = useRBAC();
+  
+  if (!isAdmin && !hasAppAccess(permissions, "epm")) {
+    return <AccessDenied appName="Enterprise Performance Management" />;
+  }
+
   return (
     <AppLayout title="Enterprise Performance Management" appName="EPM">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

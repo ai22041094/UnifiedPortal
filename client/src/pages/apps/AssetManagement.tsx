@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
+import { hasAppAccess } from "@/lib/menu-config";
+import AccessDenied from "@/components/AccessDenied";
 import {
   SidebarProvider,
   Sidebar,

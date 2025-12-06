@@ -54,10 +54,34 @@ export const MENU_ITEMS: MenuGroup[] = [
     label: "Custom Portal",
     items: [
       {
+        id: "portal.access",
+        label: "Access Custom Portal",
+        icon: LayoutDashboard,
+        href: "/apps/custom-portal",
+      },
+      {
         id: "portal.dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
         href: "/apps/custom-portal",
+      },
+      {
+        id: "portal.projects",
+        label: "Projects",
+        icon: Package,
+        href: "/apps/custom-portal/projects",
+      },
+      {
+        id: "portal.requisitions",
+        label: "Requisitions",
+        icon: FileText,
+        href: "/apps/custom-portal/requisitions",
+      },
+      {
+        id: "portal.settings",
+        label: "Settings",
+        icon: Settings,
+        href: "/apps/custom-portal/settings",
       },
     ],
   },
@@ -65,6 +89,12 @@ export const MENU_ITEMS: MenuGroup[] = [
     id: "alm",
     label: "Asset Lifecycle Management",
     items: [
+      {
+        id: "alm.access",
+        label: "Access ALM",
+        icon: Package,
+        href: "/apps/alm",
+      },
       {
         id: "alm.dashboard",
         label: "Dashboard",
@@ -101,12 +131,60 @@ export const MENU_ITEMS: MenuGroup[] = [
         icon: FileText,
         href: "/apps/alm/depreciation",
       },
+      {
+        id: "alm.planning",
+        label: "Planning",
+        icon: FileText,
+        href: "/apps/alm/planning",
+      },
+      {
+        id: "alm.acquisition",
+        label: "Acquisition",
+        icon: Package,
+        href: "/apps/alm/acquisition",
+      },
+      {
+        id: "alm.operations",
+        label: "Operations",
+        icon: Settings,
+        href: "/apps/alm/operations",
+      },
+      {
+        id: "alm.decommissioning",
+        label: "Decommissioning",
+        icon: FileText,
+        href: "/apps/alm/decommissioning",
+      },
+      {
+        id: "alm.integration",
+        label: "Integration Ecosystem",
+        icon: Package,
+        href: "/apps/alm/integration",
+      },
+      {
+        id: "alm.analytics",
+        label: "Advanced Analytics",
+        icon: BarChart3,
+        href: "/apps/alm/analytics",
+      },
+      {
+        id: "alm.settings",
+        label: "Settings",
+        icon: Settings,
+        href: "/apps/alm/settings",
+      },
     ],
   },
   {
     id: "service-desk",
     label: "Service Desk",
     items: [
+      {
+        id: "sd.access",
+        label: "Access Service Desk",
+        icon: HeadphonesIcon,
+        href: "/apps/service-desk",
+      },
       {
         id: "sd.dashboard",
         label: "Dashboard",
@@ -125,12 +203,48 @@ export const MENU_ITEMS: MenuGroup[] = [
         icon: AlertTriangle,
         href: "/apps/service-desk/incidents",
       },
+      {
+        id: "sd.problems",
+        label: "Problems",
+        icon: AlertTriangle,
+        href: "/apps/service-desk/problems",
+      },
+      {
+        id: "sd.changes",
+        label: "Change Management",
+        icon: FileText,
+        href: "/apps/service-desk/changes",
+      },
+      {
+        id: "sd.knowledge",
+        label: "Knowledge Base",
+        icon: FileText,
+        href: "/apps/service-desk/knowledge",
+      },
+      {
+        id: "sd.sla",
+        label: "SLA Management",
+        icon: Clock,
+        href: "/apps/service-desk/sla",
+      },
+      {
+        id: "sd.reports",
+        label: "Reports",
+        icon: BarChart3,
+        href: "/apps/service-desk/reports",
+      },
     ],
   },
   {
     id: "epm",
     label: "Enterprise Performance",
     items: [
+      {
+        id: "epm.access",
+        label: "Access EPM",
+        icon: BarChart3,
+        href: "/apps/epm",
+      },
       {
         id: "epm.dashboard",
         label: "Dashboard",
@@ -148,6 +262,30 @@ export const MENU_ITEMS: MenuGroup[] = [
         label: "KPI Management",
         icon: Settings,
         href: "/apps/epm/kpi",
+      },
+      {
+        id: "epm.goals",
+        label: "Goal Setting",
+        icon: FileText,
+        href: "/apps/epm/goals",
+      },
+      {
+        id: "epm.reviews",
+        label: "Performance Reviews",
+        icon: Users,
+        href: "/apps/epm/reviews",
+      },
+      {
+        id: "epm.analytics",
+        label: "Analytics",
+        icon: BarChart3,
+        href: "/apps/epm/analytics",
+      },
+      {
+        id: "epm.workforce",
+        label: "Workforce Planning",
+        icon: Users,
+        href: "/apps/epm/workforce",
       },
     ],
   },
@@ -177,4 +315,24 @@ export function getMenuItemById(id: string): MenuItem | undefined {
     }
   }
   return undefined;
+}
+
+export function hasAppAccess(permissions: string[], appPrefix: string): boolean {
+  if (permissions.includes("*")) return true;
+  return permissions.some((p) => p.startsWith(`${appPrefix}.`));
+}
+
+export function getAppAccessPermission(appId: string): string {
+  switch (appId) {
+    case "custom-portal":
+      return "portal.access";
+    case "alm":
+      return "alm.access";
+    case "service-desk":
+      return "sd.access";
+    case "epm":
+      return "epm.access";
+    default:
+      return "";
+  }
 }
