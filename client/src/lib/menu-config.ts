@@ -13,14 +13,36 @@ import {
   AlertTriangle,
   Building,
   LucideIcon,
+  FolderTree,
+  TrendingUp,
+  Target,
+  Calendar,
+  ClipboardList,
+  BookOpen,
+  Database,
+  Activity,
+  Briefcase,
+  PieChart,
+  ListChecks,
+  Truck,
+  DollarSign,
+  Archive,
+  Link,
+  LineChart,
+  HelpCircle,
+  RefreshCw,
+  FileSearch,
+  CheckSquare,
+  Gauge,
+  UserCheck,
+  UsersRound,
 } from "lucide-react";
 
 export interface MenuItem {
   id: string;
   label: string;
   icon: LucideIcon;
-  href: string;
-  parentId?: string;
+  href?: string;
   children?: MenuItem[];
 }
 
@@ -78,6 +100,31 @@ export const MENU_ITEMS: MenuGroup[] = [
         href: "/apps/custom-portal/requisitions",
       },
       {
+        id: "portal.reports",
+        label: "Reports",
+        icon: BarChart3,
+        children: [
+          {
+            id: "portal.reports.summary",
+            label: "Summary Report",
+            icon: PieChart,
+            href: "/apps/custom-portal/reports/summary",
+          },
+          {
+            id: "portal.reports.detailed",
+            label: "Detailed Report",
+            icon: FileSearch,
+            href: "/apps/custom-portal/reports/detailed",
+          },
+          {
+            id: "portal.reports.analytics",
+            label: "Analytics",
+            icon: LineChart,
+            href: "/apps/custom-portal/reports/analytics",
+          },
+        ],
+      },
+      {
         id: "portal.settings",
         label: "Settings",
         icon: Settings,
@@ -104,68 +151,158 @@ export const MENU_ITEMS: MenuGroup[] = [
       {
         id: "alm.planning",
         label: "Planning",
-        icon: FileText,
-        href: "/apps/alm/planning",
+        icon: FolderTree,
+        children: [
+          {
+            id: "alm.planning.budget",
+            label: "Budget Planning",
+            icon: DollarSign,
+            href: "/apps/alm/planning/budget",
+          },
+          {
+            id: "alm.planning.forecast",
+            label: "Forecast",
+            icon: TrendingUp,
+            href: "/apps/alm/planning/forecast",
+          },
+          {
+            id: "alm.planning.requirements",
+            label: "Requirements",
+            icon: ClipboardList,
+            href: "/apps/alm/planning/requirements",
+          },
+        ],
       },
       {
         id: "alm.acquisition",
         label: "Acquisition",
-        icon: Package,
-        href: "/apps/alm/acquisition",
+        icon: Truck,
+        children: [
+          {
+            id: "alm.acquisition.purchase",
+            label: "Purchase Orders",
+            icon: FileText,
+            href: "/apps/alm/acquisition/purchase",
+          },
+          {
+            id: "alm.acquisition.vendors",
+            label: "Vendor Management",
+            icon: Building,
+            href: "/apps/alm/acquisition/vendors",
+          },
+          {
+            id: "alm.acquisition.contracts",
+            label: "Contracts",
+            icon: FileText,
+            href: "/apps/alm/acquisition/contracts",
+          },
+        ],
       },
       {
         id: "alm.operations",
         label: "Operations",
         icon: Settings,
-        href: "/apps/alm/operations",
-      },
-      {
-        id: "alm.ops-asset-register",
-        label: "Asset Register",
-        icon: Package,
-        href: "/apps/alm/operations/asset-register",
-      },
-      {
-        id: "alm.ops-inventory",
-        label: "Inventory",
-        icon: Boxes,
-        href: "/apps/alm/operations/inventory",
-      },
-      {
-        id: "alm.ops-lifecycle",
-        label: "Lifecycle Tracking",
-        icon: Clock,
-        href: "/apps/alm/operations/lifecycle-tracking",
-      },
-      {
-        id: "alm.ops-depreciation",
-        label: "Depreciation",
-        icon: FileText,
-        href: "/apps/alm/operations/depreciation",
+        children: [
+          {
+            id: "alm.ops-asset-register",
+            label: "Asset Register",
+            icon: Database,
+            href: "/apps/alm/operations/asset-register",
+          },
+          {
+            id: "alm.ops-inventory",
+            label: "Inventory",
+            icon: Boxes,
+            href: "/apps/alm/operations/inventory",
+          },
+          {
+            id: "alm.ops-lifecycle",
+            label: "Lifecycle Tracking",
+            icon: RefreshCw,
+            href: "/apps/alm/operations/lifecycle-tracking",
+          },
+          {
+            id: "alm.ops-depreciation",
+            label: "Depreciation",
+            icon: TrendingUp,
+            href: "/apps/alm/operations/depreciation",
+          },
+        ],
       },
       {
         id: "alm.maintenance",
         label: "Maintenance",
         icon: Wrench,
-        href: "/apps/alm/maintenance",
+        children: [
+          {
+            id: "alm.maintenance.scheduled",
+            label: "Scheduled Maintenance",
+            icon: Calendar,
+            href: "/apps/alm/maintenance/scheduled",
+          },
+          {
+            id: "alm.maintenance.requests",
+            label: "Maintenance Requests",
+            icon: ClipboardList,
+            href: "/apps/alm/maintenance/requests",
+          },
+          {
+            id: "alm.maintenance.history",
+            label: "Maintenance History",
+            icon: Clock,
+            href: "/apps/alm/maintenance/history",
+          },
+        ],
       },
       {
         id: "alm.decommissioning",
         label: "Decommissioning",
-        icon: FileText,
-        href: "/apps/alm/decommissioning",
+        icon: Archive,
+        children: [
+          {
+            id: "alm.decommissioning.disposal",
+            label: "Disposal",
+            icon: Archive,
+            href: "/apps/alm/decommissioning/disposal",
+          },
+          {
+            id: "alm.decommissioning.retirement",
+            label: "Retirement",
+            icon: CheckSquare,
+            href: "/apps/alm/decommissioning/retirement",
+          },
+        ],
       },
       {
         id: "alm.integration",
         label: "Integration Ecosystem",
-        icon: Package,
+        icon: Link,
         href: "/apps/alm/integration",
       },
       {
         id: "alm.analytics",
         label: "Advanced Analytics",
         icon: BarChart3,
-        href: "/apps/alm/analytics",
+        children: [
+          {
+            id: "alm.analytics.dashboard",
+            label: "Analytics Dashboard",
+            icon: Gauge,
+            href: "/apps/alm/analytics/dashboard",
+          },
+          {
+            id: "alm.analytics.reports",
+            label: "Custom Reports",
+            icon: FileSearch,
+            href: "/apps/alm/analytics/reports",
+          },
+          {
+            id: "alm.analytics.trends",
+            label: "Trend Analysis",
+            icon: LineChart,
+            href: "/apps/alm/analytics/trends",
+          },
+        ],
       },
       {
         id: "alm.settings",
@@ -195,31 +332,95 @@ export const MENU_ITEMS: MenuGroup[] = [
         id: "sd.tickets",
         label: "Tickets",
         icon: HeadphonesIcon,
-        href: "/apps/service-desk/tickets",
+        children: [
+          {
+            id: "sd.tickets.all",
+            label: "All Tickets",
+            icon: ListChecks,
+            href: "/apps/service-desk/tickets/all",
+          },
+          {
+            id: "sd.tickets.my",
+            label: "My Tickets",
+            icon: ClipboardList,
+            href: "/apps/service-desk/tickets/my",
+          },
+          {
+            id: "sd.tickets.assigned",
+            label: "Assigned to Me",
+            icon: UserCheck,
+            href: "/apps/service-desk/tickets/assigned",
+          },
+        ],
       },
       {
         id: "sd.incidents",
         label: "Incidents",
         icon: AlertTriangle,
-        href: "/apps/service-desk/incidents",
+        children: [
+          {
+            id: "sd.incidents.active",
+            label: "Active Incidents",
+            icon: AlertTriangle,
+            href: "/apps/service-desk/incidents/active",
+          },
+          {
+            id: "sd.incidents.resolved",
+            label: "Resolved Incidents",
+            icon: CheckSquare,
+            href: "/apps/service-desk/incidents/resolved",
+          },
+        ],
       },
       {
         id: "sd.problems",
         label: "Problems",
-        icon: AlertTriangle,
+        icon: HelpCircle,
         href: "/apps/service-desk/problems",
       },
       {
         id: "sd.changes",
         label: "Change Management",
-        icon: FileText,
-        href: "/apps/service-desk/changes",
+        icon: RefreshCw,
+        children: [
+          {
+            id: "sd.changes.requests",
+            label: "Change Requests",
+            icon: FileText,
+            href: "/apps/service-desk/changes/requests",
+          },
+          {
+            id: "sd.changes.approvals",
+            label: "Pending Approvals",
+            icon: CheckSquare,
+            href: "/apps/service-desk/changes/approvals",
+          },
+          {
+            id: "sd.changes.calendar",
+            label: "Change Calendar",
+            icon: Calendar,
+            href: "/apps/service-desk/changes/calendar",
+          },
+        ],
       },
       {
         id: "sd.knowledge",
         label: "Knowledge Base",
-        icon: FileText,
-        href: "/apps/service-desk/knowledge",
+        icon: BookOpen,
+        children: [
+          {
+            id: "sd.knowledge.articles",
+            label: "Articles",
+            icon: FileText,
+            href: "/apps/service-desk/knowledge/articles",
+          },
+          {
+            id: "sd.knowledge.faq",
+            label: "FAQ",
+            icon: HelpCircle,
+            href: "/apps/service-desk/knowledge/faq",
+          },
+        ],
       },
       {
         id: "sd.sla",
@@ -231,7 +432,26 @@ export const MENU_ITEMS: MenuGroup[] = [
         id: "sd.reports",
         label: "Reports",
         icon: BarChart3,
-        href: "/apps/service-desk/reports",
+        children: [
+          {
+            id: "sd.reports.performance",
+            label: "Performance Reports",
+            icon: Gauge,
+            href: "/apps/service-desk/reports/performance",
+          },
+          {
+            id: "sd.reports.sla",
+            label: "SLA Reports",
+            icon: Clock,
+            href: "/apps/service-desk/reports/sla",
+          },
+          {
+            id: "sd.reports.trends",
+            label: "Trend Analysis",
+            icon: LineChart,
+            href: "/apps/service-desk/reports/trends",
+          },
+        ],
       },
     ],
   },
@@ -252,40 +472,136 @@ export const MENU_ITEMS: MenuGroup[] = [
         href: "/apps/epm",
       },
       {
-        id: "epm.reports",
-        label: "Reports",
-        icon: BarChart3,
-        href: "/apps/epm/reports",
-      },
-      {
-        id: "epm.kpi",
-        label: "KPI Management",
-        icon: Settings,
-        href: "/apps/epm/kpi",
-      },
-      {
         id: "epm.goals",
         label: "Goal Setting",
-        icon: FileText,
-        href: "/apps/epm/goals",
+        icon: Target,
+        children: [
+          {
+            id: "epm.goals.individual",
+            label: "Individual Goals",
+            icon: UserCheck,
+            href: "/apps/epm/goals/individual",
+          },
+          {
+            id: "epm.goals.team",
+            label: "Team Goals",
+            icon: UsersRound,
+            href: "/apps/epm/goals/team",
+          },
+          {
+            id: "epm.goals.organization",
+            label: "Organization Goals",
+            icon: Building,
+            href: "/apps/epm/goals/organization",
+          },
+        ],
       },
       {
         id: "epm.reviews",
         label: "Performance Reviews",
-        icon: Users,
-        href: "/apps/epm/reviews",
+        icon: ClipboardList,
+        children: [
+          {
+            id: "epm.reviews.pending",
+            label: "Pending Reviews",
+            icon: Clock,
+            href: "/apps/epm/reviews/pending",
+          },
+          {
+            id: "epm.reviews.completed",
+            label: "Completed Reviews",
+            icon: CheckSquare,
+            href: "/apps/epm/reviews/completed",
+          },
+          {
+            id: "epm.reviews.history",
+            label: "Review History",
+            icon: Calendar,
+            href: "/apps/epm/reviews/history",
+          },
+        ],
+      },
+      {
+        id: "epm.kpi",
+        label: "KPI Management",
+        icon: Gauge,
+        children: [
+          {
+            id: "epm.kpi.definitions",
+            label: "KPI Definitions",
+            icon: Settings,
+            href: "/apps/epm/kpi/definitions",
+          },
+          {
+            id: "epm.kpi.tracking",
+            label: "KPI Tracking",
+            icon: Activity,
+            href: "/apps/epm/kpi/tracking",
+          },
+        ],
       },
       {
         id: "epm.analytics",
         label: "Analytics",
-        icon: BarChart3,
-        href: "/apps/epm/analytics",
+        icon: LineChart,
+        children: [
+          {
+            id: "epm.analytics.dashboard",
+            label: "Analytics Dashboard",
+            icon: PieChart,
+            href: "/apps/epm/analytics/dashboard",
+          },
+          {
+            id: "epm.analytics.reports",
+            label: "Custom Reports",
+            icon: FileSearch,
+            href: "/apps/epm/analytics/reports",
+          },
+        ],
       },
       {
         id: "epm.workforce",
         label: "Workforce Planning",
-        icon: Users,
-        href: "/apps/epm/workforce",
+        icon: UsersRound,
+        children: [
+          {
+            id: "epm.workforce.capacity",
+            label: "Capacity Planning",
+            icon: Users,
+            href: "/apps/epm/workforce/capacity",
+          },
+          {
+            id: "epm.workforce.skills",
+            label: "Skills Matrix",
+            icon: ListChecks,
+            href: "/apps/epm/workforce/skills",
+          },
+          {
+            id: "epm.workforce.training",
+            label: "Training Plans",
+            icon: BookOpen,
+            href: "/apps/epm/workforce/training",
+          },
+        ],
+      },
+      {
+        id: "epm.reports",
+        label: "Reports",
+        icon: BarChart3,
+        children: [
+          {
+            id: "epm.reports.summary",
+            label: "Summary Reports",
+            icon: FileText,
+            href: "/apps/epm/reports/summary",
+          },
+          {
+            id: "epm.reports.detailed",
+            label: "Detailed Reports",
+            icon: FileSearch,
+            href: "/apps/epm/reports/detailed",
+          },
+        ],
       },
     ],
   },
@@ -293,26 +609,38 @@ export const MENU_ITEMS: MenuGroup[] = [
 
 export function getAllMenuItemIds(): string[] {
   const ids: string[] = [];
-  MENU_ITEMS.forEach((group) => {
-    group.items.forEach((item) => {
+  
+  function collectIds(items: MenuItem[]) {
+    items.forEach((item) => {
       ids.push(item.id);
       if (item.children) {
-        item.children.forEach((child) => ids.push(child.id));
+        collectIds(item.children);
       }
     });
+  }
+  
+  MENU_ITEMS.forEach((group) => {
+    collectIds(group.items);
   });
+  
   return ids;
 }
 
 export function getMenuItemById(id: string): MenuItem | undefined {
-  for (const group of MENU_ITEMS) {
-    for (const item of group.items) {
+  function findItem(items: MenuItem[]): MenuItem | undefined {
+    for (const item of items) {
       if (item.id === id) return item;
       if (item.children) {
-        const child = item.children.find((c) => c.id === id);
+        const child = findItem(item.children);
         if (child) return child;
       }
     }
+    return undefined;
+  }
+  
+  for (const group of MENU_ITEMS) {
+    const item = findItem(group.items);
+    if (item) return item;
   }
   return undefined;
 }
@@ -335,4 +663,9 @@ export function getAppAccessPermission(appId: string): string {
     default:
       return "";
   }
+}
+
+export function getPermissionLabel(permissionId: string): string {
+  const item = getMenuItemById(permissionId);
+  return item?.label || permissionId;
 }
