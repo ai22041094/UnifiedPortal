@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
+import { useRBAC } from "@/lib/rbac";
 import { Badge } from "@/components/ui/badge";
 
 const apps = [
@@ -95,7 +96,16 @@ const recentActivities = [
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { hasPermission, isAdmin } = useRBAC();
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
+  
+  const showAdminSection = isAdmin || hasPermission("admin.user-master") || hasPermission("admin.role-master");
+  const filteredAdminItems = adminItems.filter((item) => {
+    if (isAdmin) return true;
+    if (item.id === "user-master") return hasPermission("admin.user-master");
+    if (item.id === "role-master") return hasPermission("admin.role-master");
+    return false;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -213,30 +223,34 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Administration Section */}
-            <h2 className="text-xl font-semibold mb-4 mt-8 flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Administration
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {adminItems.map((item) => (
-                <Link key={item.id} href={item.href} data-testid={`link-admin-${item.id}`}>
-                  <Card className="h-full hover-elevate cursor-pointer group transition-all duration-300">
-                    <CardHeader className="space-y-3">
-                      <div className={`h-12 w-12 rounded-lg ${item.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <item.icon className={`h-6 w-6 ${item.color}`} />
-                      </div>
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm">
-                        {item.description}
-                      </CardDescription>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+            {/* Administration Section - Only visible to admins */}
+            {showAdminSection && filteredAdminItems.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mb-4 mt-8 flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Administration
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredAdminItems.map((item) => (
+                    <Link key={item.id} href={item.href} data-testid={`link-admin-${item.id}`}>
+                      <Card className="h-full hover-elevate cursor-pointer group transition-all duration-300">
+                        <CardHeader className="space-y-3">
+                          <div className={`h-12 w-12 rounded-lg ${item.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                            <item.icon className={`h-6 w-6 ${item.color}`} />
+                          </div>
+                          <CardTitle className="text-lg">{item.title}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <CardDescription className="text-sm">
+                            {item.description}
+                          </CardDescription>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </motion.div>
 
           {/* Recent Activity */}
