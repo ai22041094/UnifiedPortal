@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -16,27 +16,16 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-<<<<<<< HEAD
-=======
-localPort = 38879
+localPort = 36631
 externalPort = 3002
 
 [[ports]]
->>>>>>> f171a3d9c5ac518b92ab093cf2a683a42b72d721
 localPort = 40445
 externalPort = 3000
 
 [[ports]]
-localPort = 41635
-externalPort = 3003
-
-[[ports]]
 localPort = 46163
 externalPort = 3001
-
-[[ports]]
-localPort = 46553
-externalPort = 3002
 
 [env]
 PORT = "5000"
@@ -57,13 +46,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 mockupState = "FULLSTACK"
