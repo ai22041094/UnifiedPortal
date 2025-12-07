@@ -60,6 +60,11 @@ function Router() {
           <EPM />
         </ProtectedRoute>
       </Route>
+      <Route path="/apps/epm/:rest*">
+        <ProtectedRoute>
+          <EPM />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
