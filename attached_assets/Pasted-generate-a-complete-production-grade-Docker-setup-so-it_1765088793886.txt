@@ -1,0 +1,88 @@
+generate a complete, production-grade Docker setup so it can run on local infrastructure or a server.
+The app currently includes:
+•	A backend server (Node.js / Python / etc. — detect automatically based on code)
+•	Uses sessions and needs to move to Redis-based session management
+•	Should scale automatically (no hardcoded number of instances)
+________________________________________
+TASK — Produce the following deliverables:
+1. Dockerfile (production-grade)
+•	Multi-stage build
+•	Non-root user
+•	Best practices for security
+•	Environment variables
+•	Proper working directory and healthcheck
+•	Port exposure
+•	Production server commands
+________________________________________
+2. docker-compose.yml
+•	Include services:
+o	app (the server)
+o	redis (official image)
+o	reverse-proxy using Traefik or NGINX (choose the best default)
+•	Add:
+o	Auto-scaling section in deploy block
+o	CPU & memory resource limits
+o	Healthchecks
+o	Restart policies
+o	Volume setup
+Important:
+Do NOT use a fixed number of replicas. Configure scaling based on performance when running in Swarm/K8s. Use a template like:
+deploy:
+  mode: replicated
+  replicas: 1
+  resources:
+    limits:
+      cpus: "0.50"
+      memory: "512M"
+    reservations:
+      cpus: "0.25"
+      memory: "256M"
+  autoscale:
+    min_replicas: 1
+    max_replicas: 20
+    cpu_percent: 70
+If Docker Compose v2 does not support autoscale directly, output a Docker Swarm-ready version as well.
+________________________________________
+3. Redis Session Integration
+Provide:
+•	Code changes
+•	Environment variables
+•	Example middleware configuration (for Node Express or Python Flask/FastAPI — detect based on code)
+•	Production Redis config recommendations
+________________________________________
+4. setup.sh (One-Command Bootstrap Script)
+The script should:
+•	Install Docker & Docker Compose if missing
+•	Create network(s)
+•	Pull or build images
+•	Run docker compose up -d
+•	Print access URLs and logs
+Must include:
+•	set -e for safe exits
+•	Comments
+•	Permission fix commands
+________________________________________
+5. Production Directory Structure
+Provide a full tree, something like:
+/deploy
+  /nginx
+    default.conf
+  docker-compose.yml
+  Dockerfile
+  setup.sh
+  .env.example
+________________________________________
+6. Instructions for Deployment
+Produce clear instructions for:
+•	Running locally
+•	Deploying to a server
+•	Scaling the app (docker service scale, etc.)
+•	Environment variable loading
+•	Handling volumes
+________________________________________
+7. Optional Kubernetes Manifest
+(Only if simple and clean)
+•	Deployment
+•	Service
+•	Ingress
+•	Autoscaling (HPA)

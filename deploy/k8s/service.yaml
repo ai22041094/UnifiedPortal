@@ -1,0 +1,54 @@
+# =============================================================================
+# Kubernetes Services for pcvisor
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcvisor-app
+  labels:
+    app: pcvisor
+    component: app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+      name: http
+  selector:
+    app: pcvisor
+    component: app
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcvisor-redis
+  labels:
+    app: pcvisor
+    component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: pcvisor
+    component: redis
+---
+# PersistentVolumeClaim for Redis
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pcvisor-redis-pvc
+  labels:
+    app: pcvisor
+    component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

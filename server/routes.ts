@@ -44,6 +44,15 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Health check endpoint for Docker/K8s
+  app.get("/api/health", (_req, res) => {
+    res.json({ 
+      status: "healthy", 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
   // Auth routes
   app.post("/api/auth/register", async (req, res, next) => {
     try {
