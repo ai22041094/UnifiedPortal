@@ -9,10 +9,13 @@ import {
   Home,
   Settings,
   LogOut,
-  Bell
+  Bell,
+  Users,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useRBAC } from "@/lib/rbac";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,9 +23,15 @@ interface AppLayoutProps {
   appName: string;
 }
 
+const masterItems = [
+  { id: "user-master", icon: Users, label: "User Master", href: "/admin/users", permission: "admin.user-master" },
+  { id: "role-master", icon: Shield, label: "Role Master", href: "/admin/roles", permission: "admin.role-master" },
+];
+
 export default function AppLayout({ children, title, appName }: AppLayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { hasPermission, isAdmin } = useRBAC();
 
   const navItems = [
     { icon: Home, label: "Dashboard", href: `/apps/${appName.toLowerCase().replace(/\s/g, '-')}` },
@@ -32,6 +41,12 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
   ];
 
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
+  
+  const showMasterSection = isAdmin || hasPermission("admin.user-master") || hasPermission("admin.role-master");
+  const filteredMasterItems = masterItems.filter((item) => {
+    if (isAdmin) return true;
+    return hasPermission(item.permission);
+  });
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
@@ -44,7 +59,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
           <span className="font-bold text-lg tracking-tight">{appName}</span>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <Button
               key={item.label}
@@ -61,6 +76,30 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
               </Link>
             </Button>
           ))}
+          
+          {/* Masters Section - Only visible to admins */}
+          {showMasterSection && filteredMasterItems.length > 0 && (
+            <div className="pt-4 mt-4 border-t border-border/50">
+              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Masters</p>
+              {filteredMasterItems.map((item) => (
+                <Button
+                  key={item.id}
+                  variant={location === item.href ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
+                    location === item.href && "text-primary font-medium"
+                  )}
+                  asChild
+                  data-testid={`link-master-${item.id}`}
+                >
+                  <Link href={item.href}>
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                </Button>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-border/50 space-y-2">

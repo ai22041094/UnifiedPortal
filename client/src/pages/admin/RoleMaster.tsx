@@ -5,35 +5,26 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
 import {
-  Shield,
-  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
   Pencil,
   Trash2,
-  Search,
-  ChevronLeft,
-  Check,
-  X,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -43,6 +34,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,16 +45,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { MENU_ITEMS } from "@/lib/menu-config";
+import { MENU_ITEMS, getPermissionLabel, type MenuItem } from "@/lib/menu-config";
 import type { Role } from "@shared/schema";
 
 const roleFormSchema = z.object({
@@ -74,10 +62,275 @@ const roleFormSchema = z.object({
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
 
+function MenuItemCheckbox({
+  item,
+  selectedPermissions,
+  onToggleMultiple,
+  level = 0,
+}: {
+  item: MenuItem;
+  selectedPermissions: string[];
+  onToggleMultiple: (idsToAdd: string[], idsToRemove: string[]) => void;
+  level?: number;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = item.children && item.children.length > 0;
+  
+  const getAllDescendantIds = (menuItem: MenuItem): string[] => {
+    const ids: string[] = [];
+    if (menuItem.children) {
+      menuItem.children.forEach((child) => {
+        ids.push(child.id);
+        ids.push(...getAllDescendantIds(child));
+      });
+    }
+    return ids;
+  };
+
+  const childIds = hasChildren ? getAllDescendantIds(item) : [];
+  const allIds = [item.id, ...childIds];
+  const selectedCount = allIds.filter((id) => selectedPermissions.includes(id)).length;
+  const isChecked = selectedCount === allIds.length;
+  const isIndeterminate = selectedCount > 0 && selectedCount < allIds.length;
+  
+  const handleToggle = () => {
+    if (isChecked || isIndeterminate) {
+      onToggleMultiple([], allIds);
+    } else {
+      onToggleMultiple(allIds, []);
+    }
+  };
+
+  if (hasChildren) {
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div
+          className="flex items-center gap-2 py-1.5"
+          style={{ paddingLeft: `${level * 20}px` }}
+        >
+          <Checkbox
+            checked={isIndeterminate ? "indeterminate" : isChecked}
+            onCheckedChange={handleToggle}
+            data-testid={`checkbox-permission-${item.id}`}
+          />
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1 text-sm hover:text-foreground text-muted-foreground"
+              data-testid={`toggle-${item.id}`}
+            >
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              <span className="font-medium text-foreground">{item.label}</span>
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          {item.children?.map((child) => (
+            <MenuItemCheckbox
+              key={child.id}
+              item={child}
+              selectedPermissions={selectedPermissions}
+              onToggleMultiple={onToggleMultiple}
+              level={level + 1}
+            />
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 py-1.5"
+      style={{ paddingLeft: `${level * 20 + 24}px` }}
+    >
+      <Checkbox
+        checked={selectedPermissions.includes(item.id)}
+        onCheckedChange={() => {
+          if (selectedPermissions.includes(item.id)) {
+            onToggleMultiple([], [item.id]);
+          } else {
+            onToggleMultiple([item.id], []);
+          }
+        }}
+        data-testid={`checkbox-permission-${item.id}`}
+      />
+      <span className="text-sm">{item.label}</span>
+    </div>
+  );
+}
+
+function MenuGroupSection({
+  groupId,
+  groupLabel,
+  items,
+  selectedPermissions,
+  onToggleMultiple,
+}: {
+  groupId: string;
+  groupLabel: string;
+  items: MenuItem[];
+  selectedPermissions: string[];
+  onToggleMultiple: (idsToAdd: string[], idsToRemove: string[]) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const getAllItemIds = (menuItems: MenuItem[]): string[] => {
+    const ids: string[] = [];
+    menuItems.forEach((item) => {
+      ids.push(item.id);
+      if (item.children) {
+        ids.push(...getAllItemIds(item.children));
+      }
+    });
+    return ids;
+  };
+
+  const allIds = getAllItemIds(items);
+  const selectedCount = allIds.filter((id) => selectedPermissions.includes(id)).length;
+  const allSelected = selectedCount === allIds.length && allIds.length > 0;
+  const isIndeterminate = selectedCount > 0 && selectedCount < allIds.length;
+
+  const handleGroupToggle = () => {
+    if (allSelected || isIndeterminate) {
+      onToggleMultiple([], allIds);
+    } else {
+      onToggleMultiple(allIds, []);
+    }
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b last:border-b-0">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/30">
+        <Checkbox
+          checked={isIndeterminate ? "indeterminate" : allSelected}
+          onCheckedChange={handleGroupToggle}
+          data-testid={`checkbox-group-${groupId}`}
+        />
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center justify-between flex-1 text-left"
+            data-testid={`toggle-group-${groupId}`}
+          >
+            <span className="font-medium text-sm">{groupLabel}</span>
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="px-3 py-2 bg-background">
+        {items.map((item) => (
+          <MenuItemCheckbox
+            key={item.id}
+            item={item}
+            selectedPermissions={selectedPermissions}
+            onToggleMultiple={onToggleMultiple}
+          />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function PermissionsTreeView({
+  selectedPermissions,
+  onToggleMultiple,
+}: {
+  selectedPermissions: string[];
+  onToggleMultiple: (idsToAdd: string[], idsToRemove: string[]) => void;
+}) {
+  return (
+    <div className="border rounded-md overflow-hidden">
+      <ScrollArea className="h-80">
+        {MENU_ITEMS.map((group) => (
+          <MenuGroupSection
+            key={group.id}
+            groupId={group.id}
+            groupLabel={group.label}
+            items={group.items}
+            selectedPermissions={selectedPermissions}
+            onToggleMultiple={onToggleMultiple}
+          />
+        ))}
+      </ScrollArea>
+    </div>
+  );
+}
+
+function RoleCard({
+  role,
+  onEdit,
+  onDelete,
+}: {
+  role: Role;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const permissions = (role.permissions as string[]) || [];
+  const displayCount = 3;
+  const displayPermissions = permissions.slice(0, displayCount);
+  const remainingCount = permissions.length - displayCount;
+
+  return (
+    <Card className="relative" data-testid={`card-role-${role.id}`}>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <CardTitle className="text-base truncate">{role.name}</CardTitle>
+          <CardDescription className="text-xs mt-1 line-clamp-2">
+            {role.description || "No description"}
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEdit}
+            data-testid={`button-edit-role-${role.id}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive"
+            onClick={onDelete}
+            data-testid={`button-delete-role-${role.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-wrap gap-1.5">
+          {displayPermissions.map((perm) => (
+            <Badge key={perm} variant="secondary" className="text-xs">
+              {getPermissionLabel(perm)}
+            </Badge>
+          ))}
+          {remainingCount > 0 && (
+            <Badge variant="outline" className="text-xs">
+              +{remainingCount} more
+            </Badge>
+          )}
+          {permissions.length === 0 && (
+            <span className="text-xs text-muted-foreground">No permissions assigned</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function RoleMaster() {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
 
@@ -105,6 +358,8 @@ export default function RoleMaster() {
     },
   });
 
+  const selectedPermissions = createForm.watch("permissions") || [];
+
   const createMutation = useMutation({
     mutationFn: async (data: RoleFormValues) => {
       return apiRequest("POST", "/api/roles", {
@@ -114,7 +369,6 @@ export default function RoleMaster() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
-      setIsCreateOpen(false);
       createForm.reset();
       toast({ title: "Role created successfully" });
     },
@@ -154,12 +408,6 @@ export default function RoleMaster() {
     },
   });
 
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (role.description && role.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   const openEditDialog = (role: Role) => {
     setEditingRole(role);
     editForm.reset({
@@ -170,284 +418,196 @@ export default function RoleMaster() {
     });
   };
 
-  const PermissionsSection = ({ form }: { form: ReturnType<typeof useForm<RoleFormValues>> }) => {
-    const selectedPermissions = form.watch("permissions") || [];
+  const handleToggleMultiple = (idsToAdd: string[], idsToRemove: string[]) => {
+    const current = new Set(selectedPermissions);
+    idsToRemove.forEach((id) => current.delete(id));
+    idsToAdd.forEach((id) => current.add(id));
+    createForm.setValue("permissions", Array.from(current));
+  };
 
-    const togglePermission = (permissionId: string) => {
-      const current = selectedPermissions;
-      const updated = current.includes(permissionId)
-        ? current.filter((p) => p !== permissionId)
-        : [...current, permissionId];
-      form.setValue("permissions", updated);
-    };
-
-    const toggleGroup = (groupId: string) => {
-      const group = MENU_ITEMS.find((g) => g.id === groupId);
-      if (!group) return;
-
-      const groupPermissions = group.items.map((item) => item.id);
-      const allSelected = groupPermissions.every((p) => selectedPermissions.includes(p));
-
-      if (allSelected) {
-        form.setValue(
-          "permissions",
-          selectedPermissions.filter((p) => !groupPermissions.includes(p))
-        );
-      } else {
-        const newPermissions = [...selectedPermissions];
-        groupPermissions.forEach((p) => {
-          if (!newPermissions.includes(p)) {
-            newPermissions.push(p);
-          }
-        });
-        form.setValue("permissions", newPermissions);
-      }
-    };
-
-    return (
-      <div className="space-y-2">
-        <FormLabel>Menu Permissions</FormLabel>
-        <div className="border rounded-md max-h-64 overflow-y-auto">
-          <Accordion type="multiple" className="w-full">
-            {MENU_ITEMS.map((group) => {
-              const groupPermissions = group.items.map((item) => item.id);
-              const selectedCount = groupPermissions.filter((p) => selectedPermissions.includes(p)).length;
-              const allSelected = selectedCount === groupPermissions.length;
-
-              return (
-                <AccordionItem key={group.id} value={group.id} className="border-b last:border-b-0">
-                  <AccordionTrigger className="px-4 py-2 hover:no-underline">
-                    <div className="flex items-center gap-3 w-full">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={() => toggleGroup(group.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        data-testid={`checkbox-group-${group.id}`}
-                      />
-                      <span className="flex-1 text-left font-medium">{group.label}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {selectedCount}/{groupPermissions.length}
-                      </Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="px-4 py-2 space-y-2 bg-muted/30">
-                      {group.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 py-1 pl-6"
-                        >
-                          <Checkbox
-                            checked={selectedPermissions.includes(item.id)}
-                            onCheckedChange={() => togglePermission(item.id)}
-                            data-testid={`checkbox-permission-${item.id}`}
-                          />
-                          <item.icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{item.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-        </div>
-      </div>
-    );
+  const editSelectedPermissions = editForm.watch("permissions") || [];
+  
+  const handleEditToggleMultiple = (idsToAdd: string[], idsToRemove: string[]) => {
+    const current = new Set(editSelectedPermissions);
+    idsToRemove.forEach((id) => current.delete(id));
+    idsToAdd.forEach((id) => current.add(id));
+    editForm.setValue("permissions", Array.from(current));
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold">Create User Roles</h1>
+          </div>
+          <Button variant="outline" asChild>
             <Link href="/portal" data-testid="link-back-portal">
-              <ChevronLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
             </Link>
           </Button>
-          <Shield className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-semibold">Role Master</h1>
         </div>
+        <p className="container mx-auto px-6 pb-4 text-sm text-muted-foreground">
+          Define custom roles by selecting pages and functionalities
+        </p>
       </header>
 
       <main className="container mx-auto px-6 py-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search roles..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-roles"
-              />
-            </div>
-            <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-role">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Role
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="grid lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create New Role</CardTitle>
+                <CardDescription>
+                  Define role name and select accessible pages
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...createForm}>
+                  <form
+                    onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))}
+                    className="space-y-6"
+                  >
+                    <FormField
+                      control={createForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role Name *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g., Expense Approver"
+                              data-testid="input-create-rolename"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={createForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              placeholder="e.g., Can approve expense claims"
+                              rows={2}
+                              data-testid="input-create-description"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Assign Pages & Functionalities</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedPermissions.length} selected
+                        </span>
+                      </div>
+                      <PermissionsTreeView
+                        selectedPermissions={selectedPermissions}
+                        onToggleMultiple={handleToggleMultiple}
+                      />
+                    </div>
+
+                    <FormField
+                      control={createForm.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between">
+                          <FormLabel>Active Status</FormLabel>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="switch-create-active"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      data-testid="button-create-role"
+                    >
+                      {createMutation.isPending ? "Creating..." : "Create Role"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="sticky top-28">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">Custom Roles</h2>
+                <p className="text-sm text-muted-foreground">Roles you've created</p>
               </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Role Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRoles.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No roles found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredRoles.map((role) => (
-                      <TableRow key={role.id} data-testid={`row-role-${role.id}`}>
-                        <TableCell className="font-medium">{role.name}</TableCell>
-                        <TableCell>{role.description || "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {(role.permissions as string[])?.length || 0} permissions
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={role.isActive ? "default" : "secondary"}
-                            className="gap-1"
-                          >
-                            {role.isActive ? (
-                              <><Check className="h-3 w-3" /> Active</>
-                            ) : (
-                              <><X className="h-3 w-3" /> Inactive</>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(role)}
-                              data-testid={`button-edit-role-${role.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => setDeletingRole(role)}
-                              data-testid={`button-delete-role-${role.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : (
+                <ScrollArea className="h-[calc(100vh-220px)]">
+                  <div className="space-y-3 pr-4">
+                    {roles.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-8 text-center text-muted-foreground">
+                          No roles created yet
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      roles.map((role) => (
+                        <RoleCard
+                          key={role.id}
+                          role={role}
+                          onEdit={() => openEditDialog(role)}
+                          onDelete={() => setDeletingRole(role)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          </div>
+        </div>
       </main>
 
-      {/* Create Role Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Create New Role</DialogTitle>
-          </DialogHeader>
-          <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-              <FormField
-                control={createForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-create-rolename" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={createForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} data-testid="input-create-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <PermissionsSection form={createForm} />
-              <FormField
-                control={createForm.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between">
-                    <FormLabel>Active</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-create-active"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create">
-                  {createMutation.isPending ? "Creating..." : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Role Dialog */}
       <Dialog open={!!editingRole} onOpenChange={() => setEditingRole(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update the role details and permissions
+            </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form
               onSubmit={editForm.handleSubmit((data) =>
                 editingRole && updateMutation.mutate({ id: editingRole.id, data })
               )}
-              className="space-y-4"
+              className="space-y-6"
             >
               <FormField
                 control={editForm.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role Name</FormLabel>
+                    <FormLabel>Role Name *</FormLabel>
                     <FormControl>
                       <Input {...field} data-testid="input-edit-rolename" />
                     </FormControl>
@@ -455,6 +615,7 @@ export default function RoleMaster() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={editForm.control}
                 name="description"
@@ -468,13 +629,26 @@ export default function RoleMaster() {
                   </FormItem>
                 )}
               />
-              <PermissionsSection form={editForm} />
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Assign Pages & Functionalities</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {editSelectedPermissions.length} selected
+                  </span>
+                </div>
+                <PermissionsTreeView
+                  selectedPermissions={editSelectedPermissions}
+                  onToggleMultiple={handleEditToggleMultiple}
+                />
+              </div>
+
               <FormField
                 control={editForm.control}
                 name="isActive"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between">
-                    <FormLabel>Active</FormLabel>
+                    <FormLabel>Active Status</FormLabel>
                     <FormControl>
                       <Switch
                         checked={field.value}
@@ -485,6 +659,7 @@ export default function RoleMaster() {
                   </FormItem>
                 )}
               />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingRole(null)}>
                   Cancel
@@ -498,7 +673,6 @@ export default function RoleMaster() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingRole} onOpenChange={() => setDeletingRole(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

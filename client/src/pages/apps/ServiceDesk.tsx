@@ -1,9 +1,18 @@
 import AppLayout from "@/components/AppLayout";
+import AccessDenied from "@/components/AccessDenied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useRBAC } from "@/lib/rbac";
+import { hasAppAccess } from "@/lib/menu-config";
 
 export default function ServiceDesk() {
+  const { permissions, isAdmin } = useRBAC();
+  
+  if (!isAdmin && !hasAppAccess(permissions, "sd")) {
+    return <AccessDenied appName="Service Desk" />;
+  }
+
   return (
     <AppLayout title="Service Desk Dashboard" appName="Service Desk">
       <div className="flex gap-4 mb-8">
