@@ -52,7 +52,9 @@ Preferred communication style: Simple, everyday language.
 **Role-Based Access Control (RBAC)**
 - Frontend RBAC context provider in `client/src/lib/rbac.tsx`
 - `useRBAC` hook provides `hasPermission`, `isAdmin`, and `permissions` for permission checking
-- Menu items in ALM sidebar are filtered based on user's role permissions
+- Menu items in ALM sidebar are filtered based on user's role permissions using hierarchical inheritance
+- Hierarchical permission inheritance: parent permissions grant access to child items (e.g., `alm.lifecycle.acquisition` grants access to `alm.lifecycle.acquisition.purchase-order`)
+- Excluded parent permissions that don't cascade: `alm`, `alm.access`, `alm.dashboard` (prevents privilege escalation from broad app-level tokens)
 - Backend `requireAdmin` middleware protects all admin API routes (`/api/users/*`, `/api/roles/*`)
 - Admin access granted to users with username "admin", role name "admin", or specific permissions (`admin.user-master`, `admin.role-master`)
 - New `/api/auth/permissions` endpoint returns current user's permissions (accessible to all authenticated users)
