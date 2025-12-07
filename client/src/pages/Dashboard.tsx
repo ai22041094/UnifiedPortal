@@ -22,35 +22,8 @@ import { Badge } from "@/components/ui/badge";
 
 const apps = [
   {
-    id: "custom-portal",
-    title: "Custom Portal",
-    description: "Enhances management, streamlines procurement, optimizes licensing.",
-    icon: LayoutDashboard,
-    href: "/apps/custom-portal",
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    id: "alm",
-    title: "Asset Lifecycle Management",
-    description: "IT & Non-IT ALM: Smooth Control from Requisition to Disposal",
-    icon: Package,
-    href: "/apps/alm",
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
-  },
-  {
-    id: "service-desk",
-    title: "Service Desk",
-    description: "Streamlined Service Desk Solutions: Built to Evolve With Your Business",
-    icon: HeadphonesIcon,
-    href: "/apps/service-desk",
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500/10",
-  },
-  {
     id: "epm",
-    title: "EPM",
+    title: "Employee Productivity Management",
     description: "Optimize Performance, Enhance Productivity – Smart Workforce Insights!",
     icon: BarChart3,
     href: "/apps/epm",
