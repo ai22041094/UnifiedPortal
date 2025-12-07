@@ -98,131 +98,131 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    id: "dashboard",
+    id: "alm.dashboard",
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/apps/alm",
   },
   {
-    id: "masters",
+    id: "alm.masters",
     title: "Masters",
     icon: Database,
     children: [
-      { id: "user-master", title: "User Master", icon: UserCog, href: "/admin/users" },
-      { id: "role-master", title: "Role Master", icon: ShieldCheck, href: "/admin/roles" },
+      { id: "alm.masters.user-master", title: "User Master", icon: UserCog, href: "/admin/users" },
+      { id: "alm.masters.role-master", title: "Role Master", icon: ShieldCheck, href: "/admin/roles" },
     ],
   },
   {
-    id: "alm-lifecycle",
+    id: "alm.lifecycle",
     title: "ALM Lifecycle",
     icon: RefreshCw,
     children: [
       {
-        id: "planning",
+        id: "alm.lifecycle.planning",
         title: "Planning",
         icon: ClipboardList,
         children: [
-          { id: "needs-assessment", title: "Needs Assessment", icon: Target, href: "/apps/alm/planning/needs-assessment" },
-          { id: "budget-planning", title: "Budget Planning", icon: DollarSign, href: "/apps/alm/planning/budget-planning" },
-          { id: "risk-analysis", title: "Risk Analysis", icon: AlertTriangle, href: "/apps/alm/planning/risk-analysis" },
-          { id: "success-criteria", title: "Success Criteria", icon: CheckCircle, href: "/apps/alm/planning/success-criteria" },
-          { id: "forecasting", title: "Forecasting & Scenario Planning", icon: TrendingUp, href: "/apps/alm/planning/forecasting" },
-          { id: "cost-estimation", title: "Cost Estimation Tools", icon: Calculator, href: "/apps/alm/planning/cost-estimation" },
-          { id: "timeline-optimization", title: "Timeline Optimization", icon: Clock, href: "/apps/alm/planning/timeline-optimization" },
-          { id: "strategic-alignment", title: "Strategic Alignment", icon: Compass, href: "/apps/alm/planning/strategic-alignment" },
-          { id: "requirements", title: "Requirements", icon: FileText, href: "/apps/alm/planning/requirements" },
-          { id: "asset-request", title: "Asset Request", icon: FileText, href: "/apps/alm/planning/asset-request" },
+          { id: "alm.lifecycle.planning.needs-assessment", title: "Needs Assessment", icon: Target, href: "/apps/alm/planning/needs-assessment" },
+          { id: "alm.lifecycle.planning.budget-planning", title: "Budget Planning", icon: DollarSign, href: "/apps/alm/planning/budget-planning" },
+          { id: "alm.lifecycle.planning.risk-analysis", title: "Risk Analysis", icon: AlertTriangle, href: "/apps/alm/planning/risk-analysis" },
+          { id: "alm.lifecycle.planning.success-criteria", title: "Success Criteria", icon: CheckCircle, href: "/apps/alm/planning/success-criteria" },
+          { id: "alm.lifecycle.planning.forecasting", title: "Forecasting & Scenario Planning", icon: TrendingUp, href: "/apps/alm/planning/forecasting" },
+          { id: "alm.lifecycle.planning.cost-estimation", title: "Cost Estimation Tools", icon: Calculator, href: "/apps/alm/planning/cost-estimation" },
+          { id: "alm.lifecycle.planning.timeline-optimization", title: "Timeline Optimization", icon: Clock, href: "/apps/alm/planning/timeline-optimization" },
+          { id: "alm.lifecycle.planning.strategic-alignment", title: "Strategic Alignment", icon: Compass, href: "/apps/alm/planning/strategic-alignment" },
+          { id: "alm.lifecycle.planning.requirements", title: "Requirements", icon: FileText, href: "/apps/alm/planning/requirements" },
+          { id: "alm.lifecycle.planning.asset-request", title: "Asset Request", icon: FileText, href: "/apps/alm/planning/asset-request" },
         ],
       },
       {
-        id: "acquisition",
+        id: "alm.lifecycle.acquisition",
         title: "Acquisition",
         icon: ShoppingCart,
         children: [
-          { id: "purchase-order", title: "Purchase Order", icon: FileText, href: "/apps/alm/acquisition/purchase-order" },
-          { id: "contracts", title: "Contracts", icon: FileText, href: "/apps/alm/acquisition/contracts" },
-          { id: "approvals", title: "Approvals", icon: CheckCircle, href: "/apps/alm/acquisition/approvals" },
-          { id: "vendor-management", title: "Vendor Management", icon: Users, href: "/apps/alm/acquisition/vendor-management" },
-          { id: "automated-procurement", title: "Automated Procurement", icon: Bot, href: "/apps/alm/acquisition/automated-procurement" },
-          { id: "inventory-tracking", title: "Real-time Inventory Tracking", icon: Package, href: "/apps/alm/acquisition/inventory-tracking" },
-          { id: "financial-tracking", title: "Financial Tracking", icon: CreditCard, href: "/apps/alm/acquisition/financial-tracking" },
+          { id: "alm.lifecycle.acquisition.purchase-order", title: "Purchase Order", icon: FileText, href: "/apps/alm/acquisition/purchase-order" },
+          { id: "alm.lifecycle.acquisition.contracts", title: "Contracts", icon: FileText, href: "/apps/alm/acquisition/contracts" },
+          { id: "alm.lifecycle.acquisition.approvals", title: "Approvals", icon: CheckCircle, href: "/apps/alm/acquisition/approvals" },
+          { id: "alm.lifecycle.acquisition.vendor-management", title: "Vendor Management", icon: Users, href: "/apps/alm/acquisition/vendor-management" },
+          { id: "alm.lifecycle.acquisition.automated-procurement", title: "Automated Procurement", icon: Bot, href: "/apps/alm/acquisition/automated-procurement" },
+          { id: "alm.lifecycle.acquisition.inventory-tracking", title: "Real-time Inventory Tracking", icon: Package, href: "/apps/alm/acquisition/inventory-tracking" },
+          { id: "alm.lifecycle.acquisition.financial-tracking", title: "Financial Tracking", icon: CreditCard, href: "/apps/alm/acquisition/financial-tracking" },
         ],
       },
       {
-        id: "operations",
+        id: "alm.lifecycle.operations",
         title: "Operations",
         icon: Play,
         children: [
-          { id: "asset-register", title: "Asset Register", icon: Package, href: "/apps/alm/operations/asset-register" },
-          { id: "inventory", title: "Inventory", icon: Package, href: "/apps/alm/operations/inventory" },
-          { id: "lifecycle-tracking", title: "Lifecycle Tracking", icon: RefreshCw, href: "/apps/alm/operations/lifecycle-tracking" },
-          { id: "depreciation", title: "Depreciation", icon: FileText, href: "/apps/alm/operations/depreciation" },
-          { id: "deployment", title: "Seamless Deployment & Integration", icon: Puzzle, href: "/apps/alm/operations/deployment" },
-          { id: "asset-assignment", title: "Asset Assignment & Accountability", icon: Users, href: "/apps/alm/operations/asset-assignment" },
-          { id: "performance-monitoring", title: "Performance Monitoring", icon: Activity, href: "/apps/alm/operations/performance-monitoring" },
-          { id: "strategic-reallocation", title: "Strategic Reallocation", icon: RefreshCw, href: "/apps/alm/operations/strategic-reallocation" },
+          { id: "alm.lifecycle.operations.asset-register", title: "Asset Register", icon: Package, href: "/apps/alm/operations/asset-register" },
+          { id: "alm.lifecycle.operations.inventory", title: "Inventory", icon: Package, href: "/apps/alm/operations/inventory" },
+          { id: "alm.lifecycle.operations.lifecycle-tracking", title: "Lifecycle Tracking", icon: RefreshCw, href: "/apps/alm/operations/lifecycle-tracking" },
+          { id: "alm.lifecycle.operations.depreciation", title: "Depreciation", icon: FileText, href: "/apps/alm/operations/depreciation" },
+          { id: "alm.lifecycle.operations.deployment", title: "Seamless Deployment & Integration", icon: Puzzle, href: "/apps/alm/operations/deployment" },
+          { id: "alm.lifecycle.operations.asset-assignment", title: "Asset Assignment & Accountability", icon: Users, href: "/apps/alm/operations/asset-assignment" },
+          { id: "alm.lifecycle.operations.performance-monitoring", title: "Performance Monitoring", icon: Activity, href: "/apps/alm/operations/performance-monitoring" },
+          { id: "alm.lifecycle.operations.strategic-reallocation", title: "Strategic Reallocation", icon: RefreshCw, href: "/apps/alm/operations/strategic-reallocation" },
         ],
       },
       {
-        id: "maintenance",
+        id: "alm.lifecycle.maintenance",
         title: "Maintenance",
         icon: Wrench,
         children: [
-          { id: "scheduled-maintenance", title: "Scheduled Maintenance", icon: Calendar, href: "/apps/alm/maintenance/scheduled" },
-          { id: "maintenance-request", title: "Maintenance Request", icon: FileText, href: "/apps/alm/maintenance/request" },
-          { id: "maintenance-history", title: "Maintenance History", icon: Clock, href: "/apps/alm/maintenance/history" },
-          { id: "preventive-maintenance", title: "Preventive Maintenance", icon: Calendar, href: "/apps/alm/maintenance/preventive" },
-          { id: "predictive-maintenance", title: "Predictive Maintenance", icon: Brain, href: "/apps/alm/maintenance/predictive" },
+          { id: "alm.lifecycle.maintenance.scheduled", title: "Scheduled Maintenance", icon: Calendar, href: "/apps/alm/maintenance/scheduled" },
+          { id: "alm.lifecycle.maintenance.request", title: "Maintenance Request", icon: FileText, href: "/apps/alm/maintenance/request" },
+          { id: "alm.lifecycle.maintenance.history", title: "Maintenance History", icon: Clock, href: "/apps/alm/maintenance/history" },
+          { id: "alm.lifecycle.maintenance.preventive", title: "Preventive Maintenance", icon: Calendar, href: "/apps/alm/maintenance/preventive" },
+          { id: "alm.lifecycle.maintenance.predictive", title: "Predictive Maintenance", icon: Brain, href: "/apps/alm/maintenance/predictive" },
         ],
       },
       {
-        id: "decommissioning",
+        id: "alm.lifecycle.decommissioning",
         title: "Decommissioning",
         icon: Trash2,
         children: [
-          { id: "asset-identification", title: "Asset Identification", icon: Search, href: "/apps/alm/decommissioning/asset-identification" },
-          { id: "secure-data-wiping", title: "Secure Data Wiping", icon: Shield, href: "/apps/alm/decommissioning/secure-data-wiping" },
-          { id: "responsible-disposal", title: "Environmentally Responsible Disposal", icon: Leaf, href: "/apps/alm/decommissioning/responsible-disposal" },
-          { id: "records-management", title: "Records Management", icon: FileText, href: "/apps/alm/decommissioning/records-management" },
+          { id: "alm.lifecycle.decommissioning.asset-identification", title: "Asset Identification", icon: Search, href: "/apps/alm/decommissioning/asset-identification" },
+          { id: "alm.lifecycle.decommissioning.secure-data-wiping", title: "Secure Data Wiping", icon: Shield, href: "/apps/alm/decommissioning/secure-data-wiping" },
+          { id: "alm.lifecycle.decommissioning.responsible-disposal", title: "Environmentally Responsible Disposal", icon: Leaf, href: "/apps/alm/decommissioning/responsible-disposal" },
+          { id: "alm.lifecycle.decommissioning.records-management", title: "Records Management", icon: FileText, href: "/apps/alm/decommissioning/records-management" },
         ],
       },
     ],
   },
   {
-    id: "integration-ecosystem",
+    id: "alm.integration",
     title: "Integration Ecosystem",
     icon: Plug,
     children: [
-      { id: "api-management", title: "API Management", icon: Key, href: "/apps/alm/integration/api-management" },
-      { id: "third-party-integrations", title: "Third-party Integrations", icon: Link2, href: "/apps/alm/integration/third-party" },
-      { id: "data-import-export", title: "Data Import/Export", icon: Upload, href: "/apps/alm/integration/data-import-export" },
-      { id: "webhooks", title: "Webhooks", icon: Webhook, href: "/apps/alm/integration/webhooks" },
+      { id: "alm.integration.api-management", title: "API Management", icon: Key, href: "/apps/alm/integration/api-management" },
+      { id: "alm.integration.third-party", title: "Third-party Integrations", icon: Link2, href: "/apps/alm/integration/third-party" },
+      { id: "alm.integration.data-import-export", title: "Data Import/Export", icon: Upload, href: "/apps/alm/integration/data-import-export" },
+      { id: "alm.integration.webhooks", title: "Webhooks", icon: Webhook, href: "/apps/alm/integration/webhooks" },
     ],
   },
   {
-    id: "analytics-reporting",
+    id: "alm.analytics",
     title: "Advanced Analytics & Reporting",
     icon: BarChart3,
     children: [
-      { id: "roi-analysis", title: "ROI Analysis", icon: PieChart, href: "/apps/alm/analytics/roi-analysis" },
-      { id: "utilization-tracking", title: "Utilization Tracking", icon: Activity, href: "/apps/alm/analytics/utilization-tracking" },
-      { id: "predictive-analytics", title: "Predictive Analytics", icon: LineChart, href: "/apps/alm/analytics/predictive-analytics" },
-      { id: "cost-optimization", title: "Cost Optimization", icon: Wallet, href: "/apps/alm/analytics/cost-optimization" },
-      { id: "custom-reporting", title: "Custom Reporting", icon: FileBarChart, href: "/apps/alm/analytics/custom-reporting" },
+      { id: "alm.analytics.roi-analysis", title: "ROI Analysis", icon: PieChart, href: "/apps/alm/analytics/roi-analysis" },
+      { id: "alm.analytics.utilization-tracking", title: "Utilization Tracking", icon: Activity, href: "/apps/alm/analytics/utilization-tracking" },
+      { id: "alm.analytics.predictive-analytics", title: "Predictive Analytics", icon: LineChart, href: "/apps/alm/analytics/predictive-analytics" },
+      { id: "alm.analytics.cost-optimization", title: "Cost Optimization", icon: Wallet, href: "/apps/alm/analytics/cost-optimization" },
+      { id: "alm.analytics.custom-reporting", title: "Custom Reporting", icon: FileBarChart, href: "/apps/alm/analytics/custom-reporting" },
     ],
   },
   {
-    id: "settings",
+    id: "alm.settings",
     title: "Settings",
     icon: Settings,
     children: [
-      { id: "general-settings", title: "General", icon: Settings, href: "/apps/alm/settings/general" },
-      { id: "security-settings", title: "Security", icon: Lock, href: "/apps/alm/settings/security" },
-      { id: "notifications-settings", title: "Notifications", icon: BellRing, href: "/apps/alm/settings/notifications" },
-      { id: "appearance-settings", title: "Appearance", icon: Palette, href: "/apps/alm/settings/appearance" },
-      { id: "backup-settings", title: "Backup & Recovery", icon: HardDrive, href: "/apps/alm/settings/backup" },
-      { id: "localization-settings", title: "Localization", icon: Globe, href: "/apps/alm/settings/localization" },
-      { id: "email-settings", title: "Email Configuration", icon: Mail, href: "/apps/alm/settings/email" },
+      { id: "alm.settings.general", title: "General", icon: Settings, href: "/apps/alm/settings/general" },
+      { id: "alm.settings.security", title: "Security", icon: Lock, href: "/apps/alm/settings/security" },
+      { id: "alm.settings.notifications", title: "Notifications", icon: BellRing, href: "/apps/alm/settings/notifications" },
+      { id: "alm.settings.appearance", title: "Appearance", icon: Palette, href: "/apps/alm/settings/appearance" },
+      { id: "alm.settings.backup", title: "Backup & Recovery", icon: HardDrive, href: "/apps/alm/settings/backup" },
+      { id: "alm.settings.localization", title: "Localization", icon: Globe, href: "/apps/alm/settings/localization" },
+      { id: "alm.settings.email", title: "Email Configuration", icon: Mail, href: "/apps/alm/settings/email" },
     ],
   },
 ];
@@ -440,24 +440,40 @@ export default function AssetManagement() {
   const isDashboard = location === "/apps/alm";
   const pageTitle = getPageTitle(location);
 
+  const excludedParentPermissions = ['alm', 'alm.access', 'alm.dashboard'];
+  
+  const checkPermissionWithHierarchy = (permissionId: string): boolean => {
+    if (hasPermission(permissionId)) return true;
+    
+    const parts = permissionId.split('.');
+    for (let i = parts.length - 1; i >= 2; i--) {
+      const parentPermission = parts.slice(0, i).join('.');
+      if (!excludedParentPermissions.includes(parentPermission) && permissions.includes(parentPermission)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
     return items
       .map((item) => {
+        if (item.id === "alm.dashboard") return item;
+        if (isAdmin) return item;
+        
         if (item.children) {
           const filteredChildren = filterMenuItems(item.children);
           if (filteredChildren.length === 0) return null;
           return { ...item, children: filteredChildren };
         }
-        if (item.id === "dashboard") return item;
-        if (isAdmin) return item;
-        const permissionId = `alm.${item.id}`;
-        if (hasPermission(permissionId) || hasPermission(item.id)) return item;
+        
+        if (checkPermissionWithHierarchy(item.id)) return item;
         return null;
       })
       .filter(Boolean) as MenuItem[];
   };
 
-  const filteredMenuItems = useMemo(() => filterMenuItems(menuItems), [hasPermission, isAdmin]);
+  const filteredMenuItems = useMemo(() => filterMenuItems(menuItems), [hasPermission, isAdmin, permissions]);
 
   const sidebarStyle = {
     "--sidebar-width": "18rem",
