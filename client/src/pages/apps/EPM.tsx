@@ -236,7 +236,7 @@ export default function EPM() {
     return <AccessDenied appName="Employee Productivity Management" />;
   }
 
-  const path = params?.rest || "";
+  const path = params?.["rest*"] || "";
   const pageConfig = PAGE_CONFIGS[path];
 
   const getPageTitle = () => {

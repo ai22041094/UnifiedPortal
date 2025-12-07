@@ -364,3 +364,22 @@ export function hasAppAccess(permissions: string[], appId: string): boolean {
       appId.startsWith(`${permission}.`)
   );
 }
+
+function findMenuItem(items: MenuItem[], id: string): MenuItem | undefined {
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (item.children) {
+      const found = findMenuItem(item.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+export function getPermissionLabel(permissionId: string): string {
+  for (const group of MENU_ITEMS) {
+    const item = findMenuItem(group.items, permissionId);
+    if (item) return item.label;
+  }
+  return permissionId;
+}
