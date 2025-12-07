@@ -130,6 +130,8 @@ const menuItems: MenuItem[] = [
           { id: "cost-estimation", title: "Cost Estimation Tools", icon: Calculator, href: "/apps/alm/planning/cost-estimation" },
           { id: "timeline-optimization", title: "Timeline Optimization", icon: Clock, href: "/apps/alm/planning/timeline-optimization" },
           { id: "strategic-alignment", title: "Strategic Alignment", icon: Compass, href: "/apps/alm/planning/strategic-alignment" },
+          { id: "requirements", title: "Requirements", icon: FileText, href: "/apps/alm/planning/requirements" },
+          { id: "asset-request", title: "Asset Request", icon: FileText, href: "/apps/alm/planning/asset-request" },
         ],
       },
       {
@@ -137,6 +139,9 @@ const menuItems: MenuItem[] = [
         title: "Acquisition",
         icon: ShoppingCart,
         children: [
+          { id: "purchase-order", title: "Purchase Order", icon: FileText, href: "/apps/alm/acquisition/purchase-order" },
+          { id: "contracts", title: "Contracts", icon: FileText, href: "/apps/alm/acquisition/contracts" },
+          { id: "approvals", title: "Approvals", icon: CheckCircle, href: "/apps/alm/acquisition/approvals" },
           { id: "vendor-management", title: "Vendor Management", icon: Users, href: "/apps/alm/acquisition/vendor-management" },
           { id: "automated-procurement", title: "Automated Procurement", icon: Bot, href: "/apps/alm/acquisition/automated-procurement" },
           { id: "inventory-tracking", title: "Real-time Inventory Tracking", icon: Package, href: "/apps/alm/acquisition/inventory-tracking" },
@@ -163,6 +168,9 @@ const menuItems: MenuItem[] = [
         title: "Maintenance",
         icon: Wrench,
         children: [
+          { id: "scheduled-maintenance", title: "Scheduled Maintenance", icon: Calendar, href: "/apps/alm/maintenance/scheduled" },
+          { id: "maintenance-request", title: "Maintenance Request", icon: FileText, href: "/apps/alm/maintenance/request" },
+          { id: "maintenance-history", title: "Maintenance History", icon: Clock, href: "/apps/alm/maintenance/history" },
           { id: "preventive-maintenance", title: "Preventive Maintenance", icon: Calendar, href: "/apps/alm/maintenance/preventive" },
           { id: "predictive-maintenance", title: "Predictive Maintenance", icon: Brain, href: "/apps/alm/maintenance/predictive" },
         ],

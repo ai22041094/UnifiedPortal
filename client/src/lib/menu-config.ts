@@ -171,6 +171,12 @@ export const MENU_ITEMS: MenuGroup[] = [
             icon: ClipboardList,
             href: "/apps/alm/planning/requirements",
           },
+          {
+            id: "alm.planning.asset-request",
+            label: "Asset Request",
+            icon: FileText,
+            href: "/apps/alm/planning/asset-request",
+          },
         ],
       },
       {
@@ -195,6 +201,12 @@ export const MENU_ITEMS: MenuGroup[] = [
             label: "Contracts",
             icon: FileText,
             href: "/apps/alm/acquisition/contracts",
+          },
+          {
+            id: "alm.acquisition.approvals",
+            label: "Approvals",
+            icon: CheckSquare,
+            href: "/apps/alm/acquisition/approvals",
           },
         ],
       },
