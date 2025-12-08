@@ -306,43 +306,25 @@ run_migration() {
 }
 
 # -----------------------------------------------------------------------------
-# Create admin user
+# Seed database (admin user + predefined roles)
 # -----------------------------------------------------------------------------
-create_admin() {
+seed_database() {
     if [ "$SKIP_ADMIN" = true ]; then
-        print_info "Skipping admin user creation (--skip-admin flag)"
+        print_info "Skipping database seeding (--skip-admin flag)"
         return
     fi
     
-    print_step "Creating admin user..."
+    print_step "Seeding database (admin user + predefined roles)..."
     
     DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     cd "$DEPLOY_DIR"
     
-    # Create admin user
-    if $COMPOSE_CMD -f $COMPOSE_FILE exec -T app node dist/create-admin.cjs; then
-        print_success "Admin user created successfully!"
+    # Run unified seed script
+    if $COMPOSE_CMD -f $COMPOSE_FILE exec -T app node dist/seed.cjs; then
+        print_success "Database seeding completed successfully!"
     else
-        print_warning "Admin user creation may have failed. You can run it manually later:"
-        echo "  $COMPOSE_CMD -f $COMPOSE_FILE exec app node dist/create-admin.cjs"
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# Seed predefined roles
-# -----------------------------------------------------------------------------
-seed_roles() {
-    print_step "Seeding predefined roles..."
-    
-    DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    cd "$DEPLOY_DIR"
-    
-    # Seed roles
-    if $COMPOSE_CMD -f $COMPOSE_FILE exec -T app node dist/seed-roles.cjs; then
-        print_success "Predefined roles seeded successfully!"
-    else
-        print_warning "Role seeding may have failed. You can run it manually later:"
-        echo "  $COMPOSE_CMD -f $COMPOSE_FILE exec app node dist/seed-roles.cjs"
+        print_warning "Database seeding may have failed. You can run it manually later:"
+        echo "  $COMPOSE_CMD -f $COMPOSE_FILE exec app node dist/seed.cjs"
     fi
 }
 
@@ -396,8 +378,7 @@ main() {
     create_network
     start_services
     run_migration
-    create_admin
-    seed_roles
+    seed_database
     print_access_info
 }
 

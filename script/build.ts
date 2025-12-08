@@ -61,6 +61,23 @@ async function buildAll() {
   });
 
   console.log("building scripts...");
+  
+  // Unified seed script (admin + roles)
+  await esbuild({
+    entryPoints: ["script/seed.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/seed.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+  });
+
+  // Legacy scripts for backward compatibility
   await esbuild({
     entryPoints: ["script/create-admin.ts"],
     platform: "node",

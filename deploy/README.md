@@ -301,31 +301,25 @@ docker compose exec app npm run db:push
 docker compose -f docker-compose.full.yml exec app npm run db:push
 ```
 
-### Create Admin User
+### Seed Database (Admin User + Roles)
 
-Create the initial admin user:
-
-```bash
-# For docker-compose.yml
-docker compose exec app node dist/create-admin.cjs
-
-# For docker-compose.full.yml
-docker compose -f docker-compose.full.yml exec app node dist/create-admin.cjs
-```
-
-### Seed Predefined Roles
-
-Create predefined roles for each application module:
+Run the unified seed script to create admin user and predefined roles:
 
 ```bash
 # For docker-compose.yml
-docker compose exec app node dist/seed-roles.cjs
+docker compose exec app node dist/seed.cjs
 
 # For docker-compose.full.yml
-docker compose -f docker-compose.full.yml exec app node dist/seed-roles.cjs
+docker compose -f docker-compose.full.yml exec app node dist/seed.cjs
 ```
 
-This creates the following roles:
+This automatically creates:
+
+**Admin User:**
+- Username: `admin`
+- Password: `P@ssw0rd@123`
+
+**Predefined Roles (2 per app):**
 - **System Administrator** - Full system access
 - **User Manager** - User and role management
 - **EPM Administrator** - Full EPM module access
