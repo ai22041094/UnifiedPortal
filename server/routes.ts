@@ -3,9 +3,11 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, type SafeUser } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
@@ -374,6 +376,188 @@ export async function registerRoutes(
       await db.update(users).set({ password: hashedPassword, updatedAt: new Date() }).where(eq(users.id, req.params.id));
       
       res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // EPM API Key Management Routes
+  // ============================================
+
+  // Get all API keys
+  app.get("/api/epm/api-keys", requireAdmin, async (req, res, next) => {
+    try {
+      const keys = await storage.getAllActiveApiKeys();
+      const safeKeys = keys.map(key => ({
+        id: key.id,
+        name: key.name,
+        lastFour: key.lastFour,
+        createdByUserId: key.createdByUserId,
+        isActive: key.isActive,
+        lastUsedAt: key.lastUsedAt,
+        expiresAt: key.expiresAt,
+        createdAt: key.createdAt,
+      }));
+      res.json(safeKeys);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Create new API key
+  app.post("/api/epm/api-keys", requireAdmin, async (req, res, next) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1, "Name is required").max(100),
+        expiresAt: z.string().datetime().optional().nullable(),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const rawKey = `pcv_${crypto.randomBytes(32).toString('hex')}`;
+      const keyHash = await bcrypt.hash(rawKey, 10);
+      const lastFour = rawKey.slice(-4);
+
+      const currentUser = req.user as SafeUser;
+      
+      const apiKey = await storage.createApiKey({
+        name: result.data.name,
+        keyHash,
+        lastFour,
+        createdByUserId: currentUser.id,
+        isActive: true,
+        expiresAt: result.data.expiresAt ? new Date(result.data.expiresAt) : null,
+      });
+
+      res.status(201).json({
+        id: apiKey.id,
+        name: apiKey.name,
+        key: rawKey,
+        lastFour: apiKey.lastFour,
+        createdAt: apiKey.createdAt,
+        expiresAt: apiKey.expiresAt,
+        message: "Save this key securely. It will not be shown again.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Revoke API key
+  app.delete("/api/epm/api-keys/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const revoked = await storage.revokeApiKey(req.params.id);
+      if (!revoked) {
+        return res.status(404).json({ message: "API key not found" });
+      }
+      res.json({ message: "API key revoked successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // External API Endpoints (API Key Protected)
+  // ============================================
+
+  // Middleware for API key authentication
+  async function requireApiKey(req: Request, res: Response, next: NextFunction) {
+    const apiKey = req.headers['x-api-key'] as string;
+    
+    if (!apiKey) {
+      return res.status(401).json({ message: "API key required. Include x-api-key header." });
+    }
+
+    try {
+      const keys = await storage.getAllActiveApiKeys();
+      
+      for (const key of keys) {
+        const isValid = await bcrypt.compare(apiKey, key.keyHash);
+        if (isValid) {
+          if (key.expiresAt && new Date(key.expiresAt) < new Date()) {
+            return res.status(401).json({ message: "API key has expired" });
+          }
+          
+          await storage.updateApiKeyLastUsed(key.id);
+          return next();
+        }
+      }
+
+      return res.status(401).json({ message: "Invalid API key" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // External Process Details Ingestion Endpoint
+  app.post("/api/external/epm/process-details", requireApiKey, async (req, res, next) => {
+    try {
+      const result = externalProcessDetailsSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString(),
+          errors: result.error.errors
+        });
+      }
+
+      const data = result.data;
+      
+      const parseDate = (dateStr: string | null | undefined): Date | null => {
+        if (!dateStr) return null;
+        
+        // Try standard Date parsing first
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+        
+        // Fallback: Parse "DD Month YYYY HH:MM:SS" format (e.g., "16 July 2025 11:58:38")
+        const parts = dateStr.match(/(\d+)\s+(\w+)\s+(\d+)\s+(\d+):(\d+):(\d+)/);
+        if (parts) {
+          const [, day, month, year, hours, minutes, seconds] = parts;
+          const monthMap: Record<string, number> = {
+            'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
+            'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
+          };
+          const monthNum = monthMap[month];
+          if (monthNum !== undefined) {
+            return new Date(parseInt(year), monthNum, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds));
+          }
+        }
+        
+        // Return null if parsing completely fails
+        return null;
+      };
+
+      const processDetails: InsertProcessDetails = {
+        taskGuid: data.taskguid,
+        agentGuid: data.agentGuid || null,
+        processId: data.ProcessId || null,
+        processName: data.ProcessName || null,
+        mainWindowTitle: data.MainWindowTitle || null,
+        startTime: parseDate(data.StartTime),
+        eventDt: parseDate(data.Eventdt),
+        idleStatus: typeof data.IdleStatus === 'number' ? data.IdleStatus !== 0 : (data.IdleStatus ?? false),
+        urlName: data.Urlname || null,
+        urlDomain: data.UrlDomain || null,
+        lapsedTime: data.TimeLapsed?.toString() || null,
+        tag1: data.tag1 || null,
+        tag2: data.Tag2 || null,
+      };
+
+      await storage.upsertProcessDetails(processDetails);
+
+      res.status(201).json({ 
+        message: "Process details ingested successfully",
+        taskGuid: data.taskguid
+      });
     } catch (error) {
       next(error);
     }

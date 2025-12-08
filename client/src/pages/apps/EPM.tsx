@@ -5,6 +5,19 @@ import { useRBAC } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { hasAppAccess } from "@/lib/menu-config";
 import AccessDenied from "@/components/AccessDenied";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 import {
   SidebarProvider,
   Sidebar,
@@ -72,6 +85,14 @@ import {
   UserCog,
   ShieldCheck,
   UserCheck,
+  Plus,
+  Copy,
+  Download,
+  Trash2,
+  Key,
+  Code,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 interface MenuItem {
@@ -315,6 +336,412 @@ function DashboardContent() {
         </Card>
       </div>
     </>
+  );
+}
+
+interface ApiKeyData {
+  id: string;
+  name: string;
+  lastFour: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+}
+
+const createApiKeySchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+});
+
+function ApiKeysContent() {
+  const { toast } = useToast();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newKeyData, setNewKeyData] = useState<{ key: string; name: string } | null>(null);
+
+  const form = useForm<z.infer<typeof createApiKeySchema>>({
+    resolver: zodResolver(createApiKeySchema),
+    defaultValues: { name: "" },
+  });
+
+  const { data: apiKeys, isLoading } = useQuery<ApiKeyData[]>({
+    queryKey: ["/api/epm/api-keys"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string }) => {
+      const res = await apiRequest("POST", "/api/epm/api-keys", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setNewKeyData({ key: data.key, name: data.name });
+      queryClient.invalidateQueries({ queryKey: ["/api/epm/api-keys"] });
+      form.reset();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create API key", variant: "destructive" });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/epm/api-keys/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/epm/api-keys"] });
+      toast({ title: "Success", description: "API key revoked successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to revoke API key", variant: "destructive" });
+    },
+  });
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied", description: "API key copied to clipboard" });
+  };
+
+  const downloadKey = (key: string, name: string) => {
+    const blob = new Blob([`API Key Name: ${name}\nAPI Key: ${key}\n\nKeep this key secure. It will not be shown again.`], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pcvisor-api-key-${name.toLowerCase().replace(/\s+/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onSubmit = (data: z.infer<typeof createApiKeySchema>) => {
+    createMutation.mutate(data);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">API Keys</h2>
+          <p className="text-muted-foreground">Manage API keys for external integrations</p>
+        </div>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) setNewKeyData(null); }}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-api-key">
+              <Plus className="h-4 w-4 mr-2" />
+              Create API Key
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{newKeyData ? "API Key Created" : "Create New API Key"}</DialogTitle>
+              <DialogDescription>
+                {newKeyData ? "Save this key securely. It will not be shown again." : "Enter a name to identify this API key."}
+              </DialogDescription>
+            </DialogHeader>
+            {newKeyData ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">Your API Key:</p>
+                  <code className="text-xs break-all block bg-background p-2 rounded" data-testid="text-new-api-key">{newKeyData.key}</code>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => copyToClipboard(newKeyData.key)} className="flex-1" data-testid="button-copy-api-key">
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                  <Button onClick={() => downloadKey(newKeyData.key, newKeyData.name)} variant="outline" className="flex-1" data-testid="button-download-api-key">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+                <Button onClick={() => { setIsCreateOpen(false); setNewKeyData(null); }} variant="secondary" className="w-full">
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Key Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Production Agent" {...field} data-testid="input-api-key-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-create-key">
+                    {createMutation.isPending ? "Creating..." : "Create Key"}
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : !apiKeys?.length ? (
+            <div className="p-12 text-center">
+              <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No API Keys</h3>
+              <p className="text-muted-foreground">Create your first API key to get started with external integrations.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Key</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Used</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {apiKeys.map((key) => (
+                  <TableRow key={key.id} data-testid={`row-api-key-${key.id}`}>
+                    <TableCell className="font-medium">{key.name}</TableCell>
+                    <TableCell><code className="text-xs bg-muted px-2 py-1 rounded">pcv_...{key.lastFour}</code></TableCell>
+                    <TableCell>{format(new Date(key.createdAt), "MMM d, yyyy")}</TableCell>
+                    <TableCell>{key.lastUsedAt ? format(new Date(key.lastUsedAt), "MMM d, yyyy HH:mm") : "Never"}</TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-revoke-key-${key.id}`}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Revoke API Key?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently revoke the API key "{key.name}". Any integrations using this key will stop working.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => revokeMutation.mutate(key.id)}>Revoke</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ApiDocumentationContent() {
+  const { toast } = useToast();
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied", description: "Copied to clipboard" });
+  };
+
+  const samplePayload = `{
+  "taskguid": "384a0be4-64c1-4c17-b635-420a51bc58ca",
+  "agentGuid": "340367429854671",
+  "ProcessId": "chrome.exe",
+  "ProcessName": "Google Chrome",
+  "MainWindowTitle": "Dashboard - PCVisor",
+  "StartTime": "16 July 2025 11:58:38",
+  "Eventdt": "16 July 2025 11:58:38",
+  "IdleStatus": 0,
+  "Urlname": "https://example.com/page",
+  "UrlDomain": "example.com",
+  "TimeLapsed": 120,
+  "tag1": "Internet",
+  "Tag2": "Productivity"
+}`;
+
+  const curlExample = `curl -X POST "${baseUrl}/api/external/epm/process-details" \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: YOUR_API_KEY" \\
+  -d '${samplePayload.replace(/\n/g, "\\n").replace(/'/g, "\\'")}'`;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold">API Documentation</h2>
+        <p className="text-muted-foreground">Learn how to integrate external systems with PCVisor EPM</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Webhook className="h-5 w-5" />
+            Process Details Ingestion API
+          </CardTitle>
+          <CardDescription>Send process activity data from external agents to PCVisor</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <h4 className="font-medium">Endpoint</h4>
+            <div className="flex items-center gap-2">
+              <Badge>POST</Badge>
+              <code className="flex-1 bg-muted px-3 py-2 rounded text-sm" data-testid="text-api-endpoint">
+                {baseUrl}/api/external/epm/process-details
+              </code>
+              <Button variant="ghost" size="icon" onClick={() => copyToClipboard(`${baseUrl}/api/external/epm/process-details`)} data-testid="button-copy-endpoint">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Authentication</h4>
+            <p className="text-sm text-muted-foreground">Include your API key in the request headers:</p>
+            <div className="bg-muted p-3 rounded">
+              <code className="text-sm">x-api-key: YOUR_API_KEY</code>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Request Headers</h4>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Header</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Required</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell><code>Content-Type</code></TableCell>
+                  <TableCell><code>application/json</code></TableCell>
+                  <TableCell><Badge variant="secondary">Required</Badge></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell><code>x-api-key</code></TableCell>
+                  <TableCell>Your API key</TableCell>
+                  <TableCell><Badge variant="secondary">Required</Badge></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Request Body</h4>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Field</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { field: "taskguid", type: "string", desc: "Unique identifier for this task (required)" },
+                  { field: "agentGuid", type: "string", desc: "Agent/device identifier" },
+                  { field: "ProcessId", type: "string", desc: "Process executable name" },
+                  { field: "ProcessName", type: "string", desc: "Display name of the process" },
+                  { field: "MainWindowTitle", type: "string", desc: "Active window title" },
+                  { field: "StartTime", type: "string", desc: "Process start time (format: DD Month YYYY HH:MM:SS)" },
+                  { field: "Eventdt", type: "string", desc: "Event timestamp" },
+                  { field: "IdleStatus", type: "number|boolean", desc: "0/false = active, 1/true = idle" },
+                  { field: "Urlname", type: "string", desc: "Full URL if browser-based" },
+                  { field: "UrlDomain", type: "string", desc: "Domain name extracted from URL" },
+                  { field: "TimeLapsed", type: "number", desc: "Time spent in seconds" },
+                  { field: "tag1", type: "string", desc: "Category tag" },
+                  { field: "Tag2", type: "string", desc: "Secondary tag" },
+                ].map((row) => (
+                  <TableRow key={row.field}>
+                    <TableCell><code>{row.field}</code></TableCell>
+                    <TableCell><code className="text-xs">{row.type}</code></TableCell>
+                    <TableCell className="text-sm">{row.desc}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Sample Request</h4>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(samplePayload)} data-testid="button-copy-sample">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy JSON
+              </Button>
+            </div>
+            <pre className="bg-muted p-4 rounded text-xs overflow-x-auto" data-testid="text-sample-payload">
+              {samplePayload}
+            </pre>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Response</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="font-medium text-sm">Success (201)</span>
+                </div>
+                <pre className="bg-muted p-3 rounded text-xs">
+{`{
+  "message": "Process details ingested successfully",
+  "taskGuid": "384a0be4-..."
+}`}
+                </pre>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <span className="font-medium text-sm">Error (401/400)</span>
+                </div>
+                <pre className="bg-muted p-3 rounded text-xs">
+{`{
+  "message": "Invalid API key"
+}`}
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">cURL Example</h4>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(curlExample)} data-testid="button-copy-curl">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </Button>
+            </div>
+            <pre className="bg-muted p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap">
+              {curlExample}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Getting Started</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="list-decimal list-inside space-y-3 text-sm">
+            <li>Navigate to <strong>Integrations &amp; API</strong> &gt; <strong>API Endpoints</strong> to create an API key</li>
+            <li>Copy or download your API key securely (it will only be shown once)</li>
+            <li>Configure your agent or external system to send data to the endpoint above</li>
+            <li>Include the <code className="bg-muted px-1 rounded">x-api-key</code> header with every request</li>
+            <li>Monitor data ingestion in the Process Usage Logs section</li>
+          </ol>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -562,6 +989,10 @@ export default function EPM() {
             <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
               {isDashboard ? (
                 <DashboardContent />
+              ) : location === "/apps/epm/integrations/api-endpoints" ? (
+                <ApiKeysContent />
+              ) : location === "/apps/epm/integrations/api-documentation" ? (
+                <ApiDocumentationContent />
               ) : (
                 <PageInProgress title={pageTitle} />
               )}

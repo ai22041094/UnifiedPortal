@@ -113,3 +113,51 @@ export const updateProcessDetailsSchema = insertProcessDetailsSchema.partial().o
 export type InsertProcessDetails = z.infer<typeof insertProcessDetailsSchema>;
 export type UpdateProcessDetails = z.infer<typeof updateProcessDetailsSchema>;
 export type ProcessDetails = typeof pcvProcessDetails.$inferSelect;
+
+// API Keys table for external integrations
+export const epmApiKeys = pgTable("epm_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  lastFour: varchar("last_four", { length: 4 }).notNull(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  isActive: boolean("is_active").default(true),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertApiKeySchema = createInsertSchema(epmApiKeys, {
+  name: z.string().min(1, "Name is required").max(100),
+  keyHash: z.string(),
+  lastFour: z.string().length(4),
+  createdByUserId: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+  expiresAt: z.date().optional().nullable(),
+}).omit({
+  id: true,
+  lastUsedAt: true,
+  createdAt: true,
+});
+
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof epmApiKeys.$inferSelect;
+
+// External payload schema for process details ingestion (maps external field names to internal)
+export const externalProcessDetailsSchema = z.object({
+  taskguid: z.string().max(50),
+  agentGuid: z.string().optional().nullable(),
+  ProcessId: z.string().max(100).optional().nullable(),
+  ProcessName: z.string().max(500).optional().nullable(),
+  MainWindowTitle: z.string().max(500).optional().nullable(),
+  StartTime: z.string().optional().nullable(),
+  Eventdt: z.string().optional().nullable(),
+  IdleStatus: z.union([z.number(), z.boolean()]).optional().nullable(),
+  Urlname: z.string().max(1000).optional().nullable(),
+  UrlDomain: z.string().max(200).optional().nullable(),
+  TimeLapsed: z.union([z.number(), z.string()]).optional().nullable(),
+  tag1: z.string().max(100).optional().nullable(),
+  Tag2: z.string().max(100).optional().nullable(),
+});
+
+export type ExternalProcessDetails = z.infer<typeof externalProcessDetailsSchema>;
