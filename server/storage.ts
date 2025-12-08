@@ -10,11 +10,14 @@ import {
   type ProcessDetails,
   type OrganizationSettings,
   type UpdateOrganizationSettings,
+  type NotificationSettings,
+  type UpdateNotificationSettings,
   users, 
   roles,
   epmApiKeys,
   pcvProcessDetails,
-  organizationSettings
+  organizationSettings,
+  notificationSettings
 } from "@shared/schema";
 import { eq, and, isNull, gt, desc } from "drizzle-orm";
 import { db } from "./db";
@@ -52,6 +55,10 @@ export interface IStorage {
   // Organization Settings methods
   getOrganizationSettings(): Promise<OrganizationSettings | undefined>;
   updateOrganizationSettings(data: UpdateOrganizationSettings, updatedByUserId: string): Promise<OrganizationSettings>;
+  
+  // Notification Settings methods
+  getNotificationSettings(): Promise<NotificationSettings | undefined>;
+  updateNotificationSettings(data: UpdateNotificationSettings, updatedByUserId: string): Promise<NotificationSettings>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -226,6 +233,31 @@ export class PostgresStorage implements IStorage {
     } else {
       const [created] = await db
         .insert(organizationSettings)
+        .values({ ...data, updatedByUserId } as any)
+        .returning();
+      return created;
+    }
+  }
+
+  // Notification Settings methods
+  async getNotificationSettings(): Promise<NotificationSettings | undefined> {
+    const [settings] = await db.select().from(notificationSettings).limit(1);
+    return settings;
+  }
+
+  async updateNotificationSettings(data: UpdateNotificationSettings, updatedByUserId: string): Promise<NotificationSettings> {
+    const existing = await this.getNotificationSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(notificationSettings)
+        .set({ ...data, updatedAt: new Date(), updatedByUserId })
+        .where(eq(notificationSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(notificationSettings)
         .values({ ...data, updatedByUserId } as any)
         .returning();
       return created;

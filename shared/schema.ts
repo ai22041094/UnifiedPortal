@@ -232,3 +232,55 @@ export const updateOrganizationSettingsSchema = insertOrganizationSettingsSchema
 export type InsertOrganizationSettings = z.infer<typeof insertOrganizationSettingsSchema>;
 export type UpdateOrganizationSettings = z.infer<typeof updateOrganizationSettingsSchema>;
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
+
+// Notification Settings table
+export const notificationSettings = pgTable("notification_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  emailNotificationsEnabled: boolean("email_notifications_enabled").default(true),
+  smtpHost: text("smtp_host"),
+  smtpPort: text("smtp_port").default("587"),
+  smtpUsername: text("smtp_username"),
+  smtpPassword: text("smtp_password"),
+  smtpFromEmail: text("smtp_from_email"),
+  smtpFromName: text("smtp_from_name"),
+  smtpSecure: boolean("smtp_secure").default(true),
+  inAppNotificationsEnabled: boolean("in_app_notifications_enabled").default(true),
+  pushNotificationsEnabled: boolean("push_notifications_enabled").default(false),
+  notifyOnUserCreated: boolean("notify_on_user_created").default(true),
+  notifyOnUserDeleted: boolean("notify_on_user_deleted").default(true),
+  notifyOnPasswordChange: boolean("notify_on_password_change").default(true),
+  notifyOnLoginFailure: boolean("notify_on_login_failure").default(false),
+  notifyOnRoleChange: boolean("notify_on_role_change").default(true),
+  adminEmailRecipients: text("admin_email_recipients"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id),
+});
+
+export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings, {
+  emailNotificationsEnabled: z.boolean().default(true),
+  smtpHost: z.string().max(255).optional().nullable(),
+  smtpPort: z.string().max(10).default("587").optional().nullable(),
+  smtpUsername: z.string().max(255).optional().nullable(),
+  smtpPassword: z.string().max(255).optional().nullable(),
+  smtpFromEmail: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
+  smtpFromName: z.string().max(100).optional().nullable(),
+  smtpSecure: z.boolean().default(true),
+  inAppNotificationsEnabled: z.boolean().default(true),
+  pushNotificationsEnabled: z.boolean().default(false),
+  notifyOnUserCreated: z.boolean().default(true),
+  notifyOnUserDeleted: z.boolean().default(true),
+  notifyOnPasswordChange: z.boolean().default(true),
+  notifyOnLoginFailure: z.boolean().default(false),
+  notifyOnRoleChange: z.boolean().default(true),
+  adminEmailRecipients: z.string().max(1000).optional().nullable(),
+}).omit({
+  id: true,
+  updatedAt: true,
+  updatedByUserId: true,
+});
+
+export const updateNotificationSettingsSchema = insertNotificationSettingsSchema.partial();
+
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+export type UpdateNotificationSettings = z.infer<typeof updateNotificationSettingsSchema>;
+export type NotificationSettings = typeof notificationSettings.$inferSelect;

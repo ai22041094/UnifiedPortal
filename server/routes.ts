@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -904,6 +904,48 @@ export async function registerRoutes(
         message: "File deleted successfully",
         settings: updatedSettings
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // NOTIFICATION SETTINGS ROUTES
+  // ============================================
+
+  app.get("/api/notifications", requireAdmin, async (req, res, next) => {
+    try {
+      const settings = await storage.getNotificationSettings();
+      res.json(settings || {});
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/notifications", requireAdmin, async (req, res, next) => {
+    try {
+      const result = updateNotificationSettingsSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      const currentUser = req.user as SafeUser;
+      const settings = await storage.updateNotificationSettings(result.data, currentUser.id);
+      res.json(settings);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/notifications/test-email", requireAdmin, async (req, res, next) => {
+    try {
+      const settings = await storage.getNotificationSettings();
+      if (!settings || !settings.emailNotificationsEnabled) {
+        return res.status(400).json({ message: "Email notifications are not enabled" });
+      }
+      if (!settings.smtpHost || !settings.smtpFromEmail) {
+        return res.status(400).json({ message: "SMTP configuration is incomplete" });
+      }
+      res.json({ message: "Test email functionality will be implemented with email service integration" });
     } catch (error) {
       next(error);
     }

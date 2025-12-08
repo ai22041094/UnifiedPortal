@@ -78,11 +78,11 @@ const adminMenuItems = [
     title: "Notification Settings",
     description: "Configure system notifications and alerts",
     icon: Bell,
-    href: "#",
+    href: "/admin/notifications",
     color: "text-yellow-500",
     bgColor: "bg-yellow-500/10",
     permission: "admin.notifications",
-    available: false,
+    available: true,
   },
   {
     id: "security",
