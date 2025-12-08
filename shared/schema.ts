@@ -23,6 +23,7 @@ export const users = pgTable("users", {
   fullName: text("full_name"),
   roleId: varchar("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
+  isSystem: boolean("is_system").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -52,13 +53,14 @@ export const insertUserSchema = createInsertSchema(users, {
   fullName: z.string().optional().nullable(),
   roleId: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
+  isSystem: z.boolean().optional().default(false),
 }).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const updateUserSchema = insertUserSchema.partial().omit({ password: true });
+export const updateUserSchema = insertUserSchema.partial().omit({ password: true, isSystem: true });
 
 export const selectUserSchema = createSelectSchema(users).omit({
   password: true,

@@ -79,6 +79,7 @@ export async function registerRoutes(
         fullName,
         roleId,
         isActive: true,
+        isSystem: false,
       });
 
       req.login(getSafeUser(user), (err) => {
@@ -285,6 +286,7 @@ export async function registerRoutes(
         ...result.data,
         password: hashedPassword,
         isActive: result.data.isActive ?? true,
+        isSystem: false,
       });
       res.status(201).json(getSafeUser(user));
     } catch (error) {
@@ -323,6 +325,15 @@ export async function registerRoutes(
       const currentUser = req.user as SafeUser;
       if (currentUser.id === req.params.id) {
         return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const userToDelete = await storage.getUser(req.params.id);
+      if (!userToDelete) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (userToDelete.isSystem) {
+        return res.status(403).json({ message: "Cannot delete system user" });
       }
 
       const deleted = await storage.deleteUser(req.params.id);
