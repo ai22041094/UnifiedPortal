@@ -284,3 +284,32 @@ export const updateNotificationSettingsSchema = insertNotificationSettingsSchema
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 export type UpdateNotificationSettings = z.infer<typeof updateNotificationSettingsSchema>;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
+
+// Push Subscriptions table for web push notifications
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions, {
+  userId: z.string(),
+  endpoint: z.string().url(),
+  p256dh: z.string(),
+  auth: z.string(),
+  userAgent: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import webPush from "web-push";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -946,6 +947,213 @@ export async function registerRoutes(
         return res.status(400).json({ message: "SMTP configuration is incomplete" });
       }
       res.json({ message: "Test email functionality will be implemented with email service integration" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // PUSH NOTIFICATION ROUTES
+  // ============================================
+
+  // Configure web-push with VAPID keys
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:admin@pcvisor.com";
+
+  if (vapidPublicKey && vapidPrivateKey) {
+    webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+    console.log("Web Push configured with VAPID keys");
+  } else {
+    console.warn("VAPID keys not configured - push notifications will not work");
+  }
+
+  // Get VAPID public key for client
+  app.get("/api/push/vapid-public-key", requireAuth, (req, res) => {
+    if (!vapidPublicKey) {
+      return res.status(500).json({ message: "Push notifications not configured" });
+    }
+    res.json({ publicKey: vapidPublicKey });
+  });
+
+  // Subscribe to push notifications
+  app.post("/api/push/subscribe", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const { subscription } = req.body;
+      
+      if (!subscription || !subscription.endpoint || !subscription.keys) {
+        return res.status(400).json({ message: "Invalid subscription data" });
+      }
+
+      const pushSubscription = await storage.createPushSubscription({
+        userId: currentUser.id,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: req.headers["user-agent"] || null,
+        isActive: true,
+      });
+
+      // Send a welcome notification
+      try {
+        await webPush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.keys.p256dh,
+              auth: subscription.keys.auth,
+            },
+          },
+          JSON.stringify({
+            title: "Notifications Enabled",
+            body: "You will now receive push notifications from pcvisor.",
+            icon: "/icon-192.png",
+            badge: "/badge-72.png",
+          })
+        );
+      } catch (pushError) {
+        console.error("Failed to send welcome notification:", pushError);
+      }
+
+      res.status(201).json({ message: "Subscription saved", id: pushSubscription.id });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Unsubscribe from push notifications
+  app.post("/api/push/unsubscribe", requireAuth, async (req, res, next) => {
+    try {
+      const { endpoint } = req.body;
+      
+      if (!endpoint) {
+        return res.status(400).json({ message: "Endpoint is required" });
+      }
+
+      await storage.deletePushSubscription(endpoint);
+      res.json({ message: "Unsubscribed successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get user's push subscriptions
+  app.get("/api/push/subscriptions", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const subscriptions = await storage.getPushSubscriptionsByUserId(currentUser.id);
+      res.json(subscriptions.map(s => ({
+        id: s.id,
+        endpoint: s.endpoint,
+        createdAt: s.createdAt,
+        userAgent: s.userAgent,
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Send test push notification (admin only)
+  app.post("/api/push/test", requireAdmin, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const subscriptions = await storage.getPushSubscriptionsByUserId(currentUser.id);
+
+      if (subscriptions.length === 0) {
+        return res.status(400).json({ message: "No push subscriptions found for your account" });
+      }
+
+      const payload = JSON.stringify({
+        title: "Test Notification",
+        body: "This is a test push notification from pcvisor.",
+        icon: "/icon-192.png",
+        badge: "/badge-72.png",
+        timestamp: Date.now(),
+      });
+
+      const results = await Promise.allSettled(
+        subscriptions.map(sub =>
+          webPush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth,
+              },
+            },
+            payload
+          )
+        )
+      );
+
+      const successful = results.filter(r => r.status === "fulfilled").length;
+      const failed = results.filter(r => r.status === "rejected").length;
+
+      res.json({
+        message: `Sent ${successful} notification(s), ${failed} failed`,
+        successful,
+        failed,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Send push notification to all subscribers (admin only)
+  app.post("/api/push/broadcast", requireAdmin, async (req, res, next) => {
+    try {
+      const { title, body, url } = req.body;
+
+      if (!title || !body) {
+        return res.status(400).json({ message: "Title and body are required" });
+      }
+
+      const subscriptions = await storage.getAllActivePushSubscriptions();
+
+      if (subscriptions.length === 0) {
+        return res.status(400).json({ message: "No active push subscriptions" });
+      }
+
+      const payload = JSON.stringify({
+        title,
+        body,
+        icon: "/icon-192.png",
+        badge: "/badge-72.png",
+        url: url || "/portal",
+        timestamp: Date.now(),
+      });
+
+      const results = await Promise.allSettled(
+        subscriptions.map(sub =>
+          webPush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth,
+              },
+            },
+            payload
+          ).catch(async (error: any) => {
+            // Remove invalid subscriptions
+            if (error.statusCode === 410 || error.statusCode === 404) {
+              await storage.deletePushSubscription(sub.endpoint);
+            }
+            throw error;
+          })
+        )
+      );
+
+      const successful = results.filter(r => r.status === "fulfilled").length;
+      const failed = results.filter(r => r.status === "rejected").length;
+
+      res.json({
+        message: `Broadcast sent to ${successful} subscriber(s), ${failed} failed`,
+        successful,
+        failed,
+        total: subscriptions.length,
+      });
     } catch (error) {
       next(error);
     }

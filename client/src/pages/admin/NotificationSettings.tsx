@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { useEffect } from "react";
-import { Bell, ChevronLeft, Save, Loader2, Mail, MessageSquare, AlertTriangle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Bell, ChevronLeft, Save, Loader2, Mail, MessageSquare, AlertTriangle, Smartphone, BellRing, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,28 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { NotificationSettings } from "@shared/schema";
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+interface PushSubscriptionInfo {
+  id: string;
+  endpoint: string;
+  createdAt: string;
+  userAgent: string | null;
+}
 
 const notificationFormSchema = z.object({
   emailNotificationsEnabled: z.boolean().default(true),
@@ -47,9 +66,141 @@ type NotificationFormValues = z.infer<typeof notificationFormSchema>;
 
 export default function NotificationSettingsPage() {
   const { toast } = useToast();
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const { data: settings, isLoading } = useQuery<NotificationSettings>({
     queryKey: ["/api/notifications"],
+  });
+
+  const { data: vapidKey } = useQuery<{ publicKey: string }>({
+    queryKey: ["/api/push/vapid-public-key"],
+  });
+
+  const { data: pushSubscriptions, refetch: refetchSubscriptions } = useQuery<PushSubscriptionInfo[]>({
+    queryKey: ["/api/push/subscriptions"],
+  });
+
+  const checkPushSubscription = useCallback(async () => {
+    if (!swRegistration) return;
+    try {
+      const subscription = await swRegistration.pushManager.getSubscription();
+      setPushSubscribed(!!subscription);
+    } catch (error) {
+      console.error("Error checking push subscription:", error);
+    }
+  }, [swRegistration]);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      setPushSupported(true);
+      navigator.serviceWorker.register("/sw.js").then((registration) => {
+        setSwRegistration(registration);
+      }).catch((error) => {
+        console.error("Service worker registration failed:", error);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (swRegistration) {
+      checkPushSubscription();
+    }
+  }, [swRegistration, checkPushSubscription]);
+
+  const subscribeToPush = async () => {
+    if (!swRegistration || !vapidKey) {
+      toast({
+        title: "Error",
+        description: "Push notifications are not configured",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPushLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast({
+          title: "Permission Denied",
+          description: "Please allow notifications in your browser settings",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const subscription = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey.publicKey),
+      });
+
+      await apiRequest("POST", "/api/push/subscribe", { subscription });
+      setPushSubscribed(true);
+      refetchSubscriptions();
+      toast({
+        title: "Subscribed",
+        description: "You are now subscribed to push notifications",
+      });
+    } catch (error) {
+      console.error("Error subscribing to push:", error);
+      toast({
+        title: "Error",
+        description: "Failed to subscribe to push notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const unsubscribeFromPush = async () => {
+    if (!swRegistration) return;
+
+    setPushLoading(true);
+    try {
+      const subscription = await swRegistration.pushManager.getSubscription();
+      if (subscription) {
+        await apiRequest("POST", "/api/push/unsubscribe", { endpoint: subscription.endpoint });
+        await subscription.unsubscribe();
+      }
+      setPushSubscribed(false);
+      refetchSubscriptions();
+      toast({
+        title: "Unsubscribed",
+        description: "You have been unsubscribed from push notifications",
+      });
+    } catch (error) {
+      console.error("Error unsubscribing from push:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unsubscribe from push notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const testPushMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/push/test", {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Test Sent",
+        description: "A test push notification has been sent to your devices",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test notification",
+        variant: "destructive",
+      });
+    },
   });
 
   const form = useForm<NotificationFormValues>({
@@ -175,10 +326,14 @@ export default function NotificationSettingsPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="email" className="space-y-6">
-              <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsList className="grid w-full max-w-lg grid-cols-4">
                 <TabsTrigger value="email" data-testid="tab-email">
                   <Mail className="h-4 w-4 mr-2" />
                   Email
+                </TabsTrigger>
+                <TabsTrigger value="push" data-testid="tab-push">
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Push
                 </TabsTrigger>
                 <TabsTrigger value="notifications" data-testid="tab-notifications">
                   <MessageSquare className="h-4 w-4 mr-2" />
@@ -401,6 +556,139 @@ export default function NotificationSettingsPage() {
                         Send Test Email
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="push" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Push Notifications</CardTitle>
+                    <CardDescription>
+                      Enable browser push notifications to receive alerts even when the app is closed
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {!pushSupported ? (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <XCircle className="h-5 w-5 text-yellow-500" />
+                        <div>
+                          <p className="font-medium text-yellow-700 dark:text-yellow-400">Push notifications not supported</p>
+                          <p className="text-sm text-muted-foreground">Your browser does not support push notifications</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-medium">Push Notifications for this Device</span>
+                              {pushSubscribed ? (
+                                <Badge variant="default" className="bg-green-500">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Enabled
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  Disabled
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {pushSubscribed
+                                ? "You will receive push notifications on this device"
+                                : "Enable to receive notifications when the app is closed"}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            {pushSubscribed ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={unsubscribeFromPush}
+                                disabled={pushLoading}
+                                data-testid="button-unsubscribe-push"
+                              >
+                                {pushLoading ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                )}
+                                Unsubscribe
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                onClick={subscribeToPush}
+                                disabled={pushLoading}
+                                data-testid="button-subscribe-push"
+                              >
+                                {pushLoading ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <BellRing className="h-4 w-4 mr-2" />
+                                )}
+                                Enable Push Notifications
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {pushSubscribed && (
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => testPushMutation.mutate()}
+                              disabled={testPushMutation.isPending}
+                              data-testid="button-test-push"
+                            >
+                              {testPushMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Bell className="h-4 w-4 mr-2" />
+                              )}
+                              Send Test Notification
+                            </Button>
+                          </div>
+                        )}
+
+                        <Separator />
+
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium">Your Active Subscriptions</h4>
+                          {pushSubscriptions && pushSubscriptions.length > 0 ? (
+                            <div className="space-y-2">
+                              {pushSubscriptions.map((sub) => (
+                                <div
+                                  key={sub.id}
+                                  className="flex items-center justify-between rounded-lg border p-3"
+                                  data-testid={`push-subscription-${sub.id}`}
+                                >
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-medium">
+                                      {sub.userAgent?.includes("Chrome")
+                                        ? "Chrome"
+                                        : sub.userAgent?.includes("Firefox")
+                                        ? "Firefox"
+                                        : sub.userAgent?.includes("Safari")
+                                        ? "Safari"
+                                        : "Browser"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Subscribed {new Date(sub.createdAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" size="sm">Active</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No active subscriptions</p>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
