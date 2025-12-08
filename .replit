@@ -86,3 +86,8 @@ waitForPort = 5000
 mockupState = "FULLSTACK"
 integrations = ["javascript_database:1.0.0"]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+TRUST_PROXY = "1"
