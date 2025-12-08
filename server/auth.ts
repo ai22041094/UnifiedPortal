@@ -71,6 +71,9 @@ export function setupAuth(app: Express) {
     app.set("trust proxy", 1);
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
+  const isProxied = trustProxy;
+
   app.use(
     session({
       store: sessionStore,
@@ -81,8 +84,8 @@ export function setupAuth(app: Express) {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 30,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProduction || isProxied,
+        sameSite: isProxied ? "none" : "lax",
       },
     })
   );
