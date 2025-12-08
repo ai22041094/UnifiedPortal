@@ -21,6 +21,10 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   email: text("email"),
   fullName: text("full_name"),
+  phone: text("phone"),
+  department: text("department"),
+  designation: text("designation"),
+  profilePhoto: text("profile_photo"),
   roleId: varchar("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
   isSystem: boolean("is_system").default(false),
@@ -51,6 +55,10 @@ export const insertUserSchema = createInsertSchema(users, {
   password: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Invalid email address").optional().nullable(),
   fullName: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  designation: z.string().optional().nullable(),
+  profilePhoto: z.string().optional().nullable(),
   roleId: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
   isSystem: z.boolean().optional().default(false),
@@ -61,6 +69,17 @@ export const insertUserSchema = createInsertSchema(users, {
 });
 
 export const updateUserSchema = insertUserSchema.partial().omit({ password: true, isSystem: true });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
 
 export const selectUserSchema = createSelectSchema(users).omit({
   password: true,

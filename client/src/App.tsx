@@ -9,6 +9,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
+import Profile from "@/pages/Profile";
+import ChangePasswordPage from "@/pages/ChangePassword";
+import AdminConsole from "@/pages/AdminConsole";
 import CustomPortal from "@/pages/apps/CustomPortal";
 import AssetManagement from "@/pages/apps/AssetManagement";
 import ServiceDesk from "@/pages/apps/ServiceDesk";
@@ -23,6 +26,21 @@ function Router() {
       <Route path="/portal">
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/change-password">
+        <ProtectedRoute>
+          <ChangePasswordPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin-console">
+        <ProtectedRoute>
+          <AdminConsole />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/users">

@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -12,10 +12,21 @@ import {
   Activity,
   TrendingUp,
   Shield,
-  Settings
+  Settings,
+  User,
+  KeyRound,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +108,7 @@ const recentActivities = [
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { hasPermission, isAdmin } = useRBAC();
+  const [, navigate] = useLocation();
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
   
   const showAdminSection = isAdmin || hasPermission("admin.user-master") || hasPermission("admin.role-master");
@@ -111,7 +123,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
               <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
@@ -124,25 +136,47 @@ export default function Dashboard() {
               <Bell className="h-5 w-5 text-muted-foreground" />
               <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
             </Button>
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium" data-testid="text-username">{user?.username}</p>
-                <p className="text-xs text-muted-foreground">Administrator</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary border-2 border-primary/20">
-                {userInitials}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="text-muted-foreground"
-              data-testid="button-logout"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-3 px-2" data-testid="button-user-menu">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-medium" data-testid="text-username">{user?.username}</p>
+                    <p className="text-xs text-muted-foreground">Administrator</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary border-2 border-primary/20">
+                    {userInitials}
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/change-password")} data-testid="menu-change-password">
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Change Password
+                </DropdownMenuItem>
+                {(isAdmin || showAdminSection) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/admin-console")} data-testid="menu-admin-console">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Admin Console
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} data-testid="menu-logout">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

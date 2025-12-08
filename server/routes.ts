@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -213,6 +213,107 @@ export async function registerRoutes(
       }
       
       res.json({ permissions: [], isAdmin: false, roleName: null });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Profile routes - for the currently logged in user
+  app.get("/api/profile", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(getSafeUser(user));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/profile", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const result = updateUserSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      // Users cannot change their own username
+      const { username, roleId, isActive, ...allowedUpdates } = result.data;
+
+      const user = await storage.updateUser(currentUser.id, allowedUpdates);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(getSafeUser(user));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/profile/password", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      
+      const result = changePasswordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      // Get the full user with password
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(result.data.currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password and update
+      const hashedPassword = await hashPassword(result.data.newPassword);
+      
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      await db.update(users).set({ password: hashedPassword, updatedAt: new Date() }).where(eq(users.id, currentUser.id));
+      
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/profile/photo", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      
+      const schema = z.object({
+        profilePhoto: z.string(),
+      });
+      
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const user = await storage.updateUser(currentUser.id, { profilePhoto: result.data.profilePhoto });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(getSafeUser(user));
     } catch (error) {
       next(error);
     }
