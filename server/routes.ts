@@ -976,6 +976,31 @@ export async function registerRoutes(
     res.json({ publicKey: vapidPublicKey });
   });
 
+  // Get VAPID configuration status (admin only)
+  app.get("/api/push/vapid-status", requireAdmin, (req, res) => {
+    const isConfigured = !!(vapidPublicKey && vapidPrivateKey);
+    res.json({
+      configured: isConfigured,
+      publicKey: vapidPublicKey || null,
+      subject: vapidSubject,
+      hasPrivateKey: !!vapidPrivateKey,
+    });
+  });
+
+  // Generate new VAPID keys (admin only) - returns keys for manual configuration
+  app.post("/api/push/generate-vapid-keys", requireAdmin, (req, res) => {
+    try {
+      const keys = webPush.generateVAPIDKeys();
+      res.json({
+        publicKey: keys.publicKey,
+        privateKey: keys.privateKey,
+        instructions: "Add these keys as environment variables: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY. The server will need to be restarted after adding the keys.",
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate VAPID keys" });
+    }
+  });
+
   // Subscribe to push notifications
   app.post("/api/push/subscribe", requireAuth, async (req, res, next) => {
     try {

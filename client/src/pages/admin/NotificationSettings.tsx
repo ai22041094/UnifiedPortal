@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
 import { useEffect, useState, useCallback } from "react";
-import { Bell, ChevronLeft, Save, Loader2, Mail, MessageSquare, AlertTriangle, Smartphone, BellRing, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Bell, ChevronLeft, Save, Loader2, Mail, MessageSquare, AlertTriangle, Smartphone, BellRing, Trash2, CheckCircle, XCircle, Key, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,19 @@ interface PushSubscriptionInfo {
   endpoint: string;
   createdAt: string;
   userAgent: string | null;
+}
+
+interface VapidStatus {
+  configured: boolean;
+  publicKey: string | null;
+  subject: string;
+  hasPrivateKey: boolean;
+}
+
+interface GeneratedVapidKeys {
+  publicKey: string;
+  privateKey: string;
+  instructions: string;
 }
 
 const notificationFormSchema = z.object({
@@ -82,6 +95,13 @@ export default function NotificationSettingsPage() {
   const { data: pushSubscriptions, refetch: refetchSubscriptions } = useQuery<PushSubscriptionInfo[]>({
     queryKey: ["/api/push/subscriptions"],
   });
+
+  const { data: vapidStatus, isLoading: vapidStatusLoading } = useQuery<VapidStatus>({
+    queryKey: ["/api/push/vapid-status"],
+  });
+
+  const [generatedKeys, setGeneratedKeys] = useState<GeneratedVapidKeys | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const checkPushSubscription = useCallback(async () => {
     if (!swRegistration) return;
@@ -202,6 +222,45 @@ export default function NotificationSettingsPage() {
       });
     },
   });
+
+  const generateVapidKeysMutation = useMutation({
+    mutationFn: async (): Promise<GeneratedVapidKeys> => {
+      const response = await apiRequest("POST", "/api/push/generate-vapid-keys", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedKeys(data);
+      toast({
+        title: "VAPID Keys Generated",
+        description: "Copy the keys below and add them as environment variables.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate VAPID keys",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+      toast({
+        title: "Copied",
+        description: `${field} copied to clipboard`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   const form = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationFormSchema),
@@ -563,6 +622,144 @@ export default function NotificationSettingsPage() {
               <TabsContent value="push" className="space-y-6">
                 <Card>
                   <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Key className="h-5 w-5" />
+                      VAPID Configuration
+                    </CardTitle>
+                    <CardDescription>
+                      VAPID keys are required for sending push notifications. Configure your keys below.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {vapidStatusLoading ? (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading VAPID configuration...</span>
+                      </div>
+                    ) : vapidStatus?.configured ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <div>
+                            <p className="font-medium text-green-700 dark:text-green-400">VAPID Keys Configured</p>
+                            <p className="text-sm text-muted-foreground">Push notifications are ready to use</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Public Key</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 p-2 rounded bg-muted text-xs break-all">
+                              {vapidStatus.publicKey}
+                            </code>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => copyToClipboard(vapidStatus.publicKey || "", "Public Key")}
+                              data-testid="button-copy-public-key"
+                            >
+                              {copiedField === "Public Key" ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span>Private Key: Configured (hidden for security)</span>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground">
+                          <strong>Subject:</strong> {vapidStatus.subject}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                          <div>
+                            <p className="font-medium text-yellow-700 dark:text-yellow-400">VAPID Keys Not Configured</p>
+                            <p className="text-sm text-muted-foreground">
+                              Generate VAPID keys below, then add them as environment variables.
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={() => generateVapidKeysMutation.mutate()}
+                          disabled={generateVapidKeysMutation.isPending}
+                          data-testid="button-generate-vapid"
+                        >
+                          {generateVapidKeysMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Generate VAPID Keys
+                        </Button>
+
+                        {generatedKeys && (
+                          <div className="space-y-4 p-4 rounded-lg border bg-card">
+                            <p className="text-sm font-medium">Generated VAPID Keys</p>
+                            <p className="text-sm text-muted-foreground">{generatedKeys.instructions}</p>
+                            
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">VAPID_PUBLIC_KEY</p>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 p-2 rounded bg-muted text-xs break-all">
+                                  {generatedKeys.publicKey}
+                                </code>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  onClick={() => copyToClipboard(generatedKeys.publicKey, "Public Key")}
+                                  data-testid="button-copy-generated-public"
+                                >
+                                  {copiedField === "Public Key" ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">VAPID_PRIVATE_KEY</p>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 p-2 rounded bg-muted text-xs break-all">
+                                  {generatedKeys.privateKey}
+                                </code>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  onClick={() => copyToClipboard(generatedKeys.privateKey, "Private Key")}
+                                  data-testid="button-copy-generated-private"
+                                >
+                                  {copiedField === "Private Key" ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle>Push Notifications</CardTitle>
                     <CardDescription>
                       Enable browser push notifications to receive alerts even when the app is closed
@@ -575,6 +772,14 @@ export default function NotificationSettingsPage() {
                         <div>
                           <p className="font-medium text-yellow-700 dark:text-yellow-400">Push notifications not supported</p>
                           <p className="text-sm text-muted-foreground">Your browser does not support push notifications</p>
+                        </div>
+                      </div>
+                    ) : !vapidStatus?.configured ? (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                        <div>
+                          <p className="font-medium text-yellow-700 dark:text-yellow-400">VAPID keys required</p>
+                          <p className="text-sm text-muted-foreground">Configure VAPID keys above to enable push notifications</p>
                         </div>
                       </div>
                     ) : (
@@ -679,7 +884,7 @@ export default function NotificationSettingsPage() {
                                       Subscribed {new Date(sub.createdAt).toLocaleDateString()}
                                     </p>
                                   </div>
-                                  <Badge variant="outline" size="sm">Active</Badge>
+                                  <Badge variant="outline">Active</Badge>
                                 </div>
                               ))}
                             </div>
@@ -718,28 +923,6 @@ export default function NotificationSettingsPage() {
                               checked={field.value}
                               onCheckedChange={field.onChange}
                               data-testid="switch-in-app"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="pushNotificationsEnabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Push Notifications</FormLabel>
-                            <FormDescription>
-                              Send browser push notifications (requires additional setup)
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="switch-push"
                             />
                           </FormControl>
                         </FormItem>
