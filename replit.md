@@ -130,6 +130,15 @@ The ALM module features 6 comprehensive dashboards with KPI cards and metrics:
 - Hierarchical menu structure supporting nested items
 - Used for role-based permission assignment
 
+**Notification Settings** (`/admin/notifications`)
+- Push notification configuration with VAPID key management
+- Admin-only VAPID key generation and status checking via `/api/push/vapid-status` and `/api/push/generate-vapid-keys`
+- VAPID keys stored as environment variables (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT) for security
+- Test push notification functionality for verifying configuration
+- In-app notification channel configuration
+- Event-based notification triggers (user created, deleted, password changes, role changes, login events)
+- Push subscription management with active subscription display
+
 **Admin Credentials**
 - Default admin user: username `admin`, password `P@ssw0rd@123`
 
