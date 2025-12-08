@@ -4,7 +4,7 @@ config();
 import { storage } from "../server/storage";
 import { hashPassword } from "../server/auth";
 import { db } from "../server/db";
-import { users } from "../shared/schema";
+import { users, organizationSettings } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
 interface RoleDefinition {
@@ -225,19 +225,51 @@ async function seedRoles() {
   return { created, skipped, total: predefinedRoles.length };
 }
 
+async function seedOrganizationSettings() {
+  try {
+    const existingSettings = await db.select().from(organizationSettings).limit(1);
+    
+    if (existingSettings.length > 0) {
+      console.log("  [SKIP] Organization settings already exist");
+      return { created: false };
+    }
+
+    await db.insert(organizationSettings).values({
+      organizationName: "pcvisor",
+      tagline: "Unified Access Control & Enterprise Management",
+      logoUrl: null,
+      faviconUrl: null,
+      footerText: "Hitachi Systems India Pvt Ltd",
+      copyrightText: "Hitachi Systems India Pvt Ltd © 2025. All rights reserved.",
+      primaryColor: "#0066FF",
+      secondaryColor: "#6366F1",
+    });
+
+    console.log("  [CREATE] Default organization settings created");
+    return { created: true };
+  } catch (error) {
+    console.error("  [ERROR] Failed to create organization settings:", error);
+    throw error;
+  }
+}
+
 async function seed() {
   console.log("==========================================");
-  console.log("  pcvisor Database Seeder");
+  console.log("  Application Database Seeder");
   console.log("==========================================\n");
 
   try {
     // Step 1: Seed Admin User
-    console.log("[1/2] Seeding admin user...\n");
+    console.log("[1/3] Seeding admin user...\n");
     const adminResult = await seedAdminUser();
 
     // Step 2: Seed Roles
-    console.log("\n[2/2] Seeding predefined roles...\n");
+    console.log("\n[2/3] Seeding predefined roles...\n");
     const rolesResult = await seedRoles();
+
+    // Step 3: Seed Organization Settings
+    console.log("\n[3/3] Seeding organization settings...\n");
+    const orgSettingsResult = await seedOrganizationSettings();
 
     // Summary
     console.log("\n==========================================");
@@ -247,6 +279,7 @@ async function seed() {
     console.log(`  Roles Created: ${rolesResult.created}`);
     console.log(`  Roles Skipped: ${rolesResult.skipped}`);
     console.log(`  Total Roles: ${rolesResult.total}`);
+    console.log(`  Organization Settings: ${orgSettingsResult.created ? "Created" : "Already exists"}`);
     console.log("==========================================\n");
     
     process.exit(0);

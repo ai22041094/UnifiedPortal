@@ -22,6 +22,17 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SafeUser } from "@shared/schema";
 
+interface PublicOrgSettings {
+  organizationName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  footerText: string | null;
+  copyrightText: string | null;
+}
+
 const profileFormSchema = z.object({
   fullName: z.string().optional().nullable(),
   email: z.string().email("Invalid email address").optional().nullable().or(z.literal("")),
@@ -40,6 +51,10 @@ export default function Profile() {
 
   const { data: profile, isLoading } = useQuery<SafeUser>({
     queryKey: ["/api/profile"],
+  });
+
+  const { data: orgSettings } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
   });
 
   const form = useForm<ProfileFormValues>({
@@ -134,6 +149,33 @@ export default function Profile() {
   const userInitials = profile?.username?.slice(0, 2).toUpperCase() || "U";
   const displayPhoto = previewPhoto || profile?.profilePhoto;
 
+  const organizationName = orgSettings?.organizationName || "pcvisor";
+  const logoUrl = orgSettings?.logoUrl;
+
+  const renderLogo = () => {
+    if (logoUrl) {
+      return (
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoUrl} 
+            alt={organizationName} 
+            className="h-8 max-w-[160px] object-contain"
+            data-testid="img-logo"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+          <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        </div>
+        <span className="text-xl font-bold tracking-tight">{organizationName}</span>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -149,12 +191,7 @@ export default function Profile() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/portal")} data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">pcvisor</span>
-          </div>
+          {renderLogo()}
         </div>
       </header>
 

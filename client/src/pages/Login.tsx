@@ -55,7 +55,7 @@ export default function LoginPage() {
   const organizationName = orgSettings?.organizationName || "pcvisor";
   const tagline = orgSettings?.tagline || "Unified Access Control & Enterprise Management";
   const logoUrl = orgSettings?.logoUrl;
-  const copyrightText = orgSettings?.copyrightText || `© ${new Date().getFullYear()} All rights reserved.`;
+  const copyrightText = orgSettings?.copyrightText || `Hitachi Systems India Pvt Ltd © ${new Date().getFullYear()}. All rights reserved.`;
 
   const renderLogo = (size: "large" | "small") => {
     const dimensions = size === "large" ? { outer: "h-10 w-10", inner: "h-5 w-5" } : { outer: "h-8 w-8", inner: "h-4 w-4" };

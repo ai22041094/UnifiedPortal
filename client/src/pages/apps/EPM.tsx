@@ -354,6 +354,13 @@ const createApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
 });
 
+interface PublicOrgSettings {
+  organizationName: string;
+  logoUrl: string | null;
+  tagline: string | null;
+  copyrightText: string | null;
+}
+
 function ApiKeysContent() {
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -363,6 +370,12 @@ function ApiKeysContent() {
     resolver: zodResolver(createApiKeySchema),
     defaultValues: { name: "" },
   });
+
+  const { data: orgSettings } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
+  });
+
+  const organizationName = orgSettings?.organizationName || "pcvisor";
 
   const { data: apiKeys, isLoading } = useQuery<ApiKeyData[]>({
     queryKey: ["/api/epm/api-keys"],
@@ -402,11 +415,12 @@ function ApiKeysContent() {
   };
 
   const downloadKey = (key: string, name: string) => {
+    const orgNameSlug = organizationName.toLowerCase().replace(/\s+/g, "-");
     const blob = new Blob([`API Key Name: ${name}\nAPI Key: ${key}\n\nKeep this key secure. It will not be shown again.`], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `pcvisor-api-key-${name.toLowerCase().replace(/\s+/g, "-")}.txt`;
+    a.download = `${orgNameSlug}-api-key-${name.toLowerCase().replace(/\s+/g, "-")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };

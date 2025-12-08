@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
@@ -19,12 +19,27 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { changePasswordSchema, type ChangePassword } from "@shared/schema";
 
+interface PublicOrgSettings {
+  organizationName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  footerText: string | null;
+  copyrightText: string | null;
+}
+
 export default function ChangePasswordPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { data: orgSettings } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
+  });
 
   const form = useForm<ChangePassword>({
     resolver: zodResolver(changePasswordSchema),
@@ -61,6 +76,33 @@ export default function ChangePasswordPage() {
     changePasswordMutation.mutate(data);
   };
 
+  const organizationName = orgSettings?.organizationName || "pcvisor";
+  const logoUrl = orgSettings?.logoUrl;
+
+  const renderLogo = () => {
+    if (logoUrl) {
+      return (
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoUrl} 
+            alt={organizationName} 
+            className="h-8 max-w-[160px] object-contain"
+            data-testid="img-logo"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+          <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        </div>
+        <span className="text-xl font-bold tracking-tight">{organizationName}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
@@ -68,12 +110,7 @@ export default function ChangePasswordPage() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/portal")} data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">pcvisor</span>
-          </div>
+          {renderLogo()}
         </div>
       </header>
 

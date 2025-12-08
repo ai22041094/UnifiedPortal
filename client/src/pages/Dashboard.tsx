@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Package,
@@ -29,6 +30,17 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
 import { Badge } from "@/components/ui/badge";
+
+interface PublicOrgSettings {
+  organizationName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  footerText: string | null;
+  copyrightText: string | null;
+}
 
 const apps = [
   {
@@ -91,17 +103,44 @@ export default function Dashboard() {
   
   const showAdminSection = isAdmin || hasPermission("admin.user-master") || hasPermission("admin.role-master");
 
+  const { data: orgSettings } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
+  });
+
+  const organizationName = orgSettings?.organizationName || "pcvisor";
+  const logoUrl = orgSettings?.logoUrl;
+  const copyrightText = orgSettings?.copyrightText || `Hitachi Systems India Pvt Ltd © ${new Date().getFullYear()}. All rights reserved.`;
+
+  const renderLogo = () => {
+    if (logoUrl) {
+      return (
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoUrl} 
+            alt={organizationName} 
+            className="h-8 max-w-[160px] object-contain"
+            data-testid="img-dashboard-logo"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+          <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        </div>
+        <span className="text-xl font-bold tracking-tight">{organizationName}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">pcvisor</span>
-          </div>
+          {renderLogo()}
           
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
@@ -271,8 +310,8 @@ export default function Dashboard() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-12 pt-6 border-t border-border/50 text-center text-sm text-muted-foreground">
-          Hitachi Systems India Pvt Ltd © 2025. All rights reserved.
+        <footer className="mt-12 pt-6 border-t border-border/50 text-center text-sm text-muted-foreground" data-testid="text-dashboard-copyright">
+          {copyrightText}
         </footer>
       </main>
     </div>

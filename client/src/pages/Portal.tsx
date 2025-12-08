@@ -66,7 +66,7 @@ export default function Portal() {
 
   const organizationName = orgSettings?.organizationName || "pcvisor";
   const logoUrl = orgSettings?.logoUrl;
-  const copyrightText = orgSettings?.copyrightText || `${organizationName} © ${new Date().getFullYear()}. All rights reserved.`;
+  const copyrightText = orgSettings?.copyrightText || `Hitachi Systems India Pvt Ltd © ${new Date().getFullYear()}. All rights reserved.`;
 
   const renderLogo = () => {
     if (logoUrl) {
