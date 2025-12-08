@@ -8,6 +8,38 @@ import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ["image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PNG, JPEG, GIF, SVG, and ICO are allowed."));
+    }
+  },
+});
 
 const authTokens = new Map<string, { userId: string; expiresAt: Date }>();
 
@@ -767,6 +799,78 @@ export async function registerRoutes(
       const currentUser = req.user as SafeUser;
       const settings = await storage.updateOrganizationSettings(result.data, currentUser.id);
       res.json(settings);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/organization/upload", requireAdmin, upload.single("file"), async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const fileType = req.body.type;
+      if (!fileType || !["logo", "favicon"].includes(fileType)) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: "Invalid file type. Must be 'logo' or 'favicon'" });
+      }
+
+      const fileUrl = `/uploads/${req.file.filename}`;
+      const currentUser = req.user as SafeUser;
+
+      const updateData = fileType === "logo" 
+        ? { logoUrl: fileUrl }
+        : { faviconUrl: fileUrl };
+
+      const settings = await storage.updateOrganizationSettings(updateData, currentUser.id);
+
+      res.json({ 
+        message: "File uploaded successfully",
+        url: fileUrl,
+        settings
+      });
+    } catch (error) {
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.error("Failed to delete uploaded file:", e);
+        }
+      }
+      next(error);
+    }
+  });
+
+  app.delete("/api/organization/upload", requireAdmin, async (req, res, next) => {
+    try {
+      const { type } = req.body;
+      if (!type || !["logo", "favicon"].includes(type)) {
+        return res.status(400).json({ message: "Invalid type. Must be 'logo' or 'favicon'" });
+      }
+
+      const settings = await storage.getOrganizationSettings();
+      if (settings) {
+        const urlToDelete = type === "logo" ? settings.logoUrl : settings.faviconUrl;
+        if (urlToDelete && urlToDelete.startsWith("/uploads/")) {
+          const filePath = path.join(uploadDir, path.basename(urlToDelete));
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      }
+
+      const currentUser = req.user as SafeUser;
+      const updateData = type === "logo" 
+        ? { logoUrl: null }
+        : { faviconUrl: null };
+
+      const updatedSettings = await storage.updateOrganizationSettings(updateData, currentUser.id);
+
+      res.json({ 
+        message: "File deleted successfully",
+        settings: updatedSettings
+      });
     } catch (error) {
       next(error);
     }

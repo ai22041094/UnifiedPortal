@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { Building, ChevronLeft, Save, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Building, ChevronLeft, Save, Loader2, Upload, X, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getAuthToken } from "@/lib/queryClient";
 import type { OrganizationSettings } from "@shared/schema";
 
 const organizationFormSchema = z.object({
@@ -46,10 +47,69 @@ type OrganizationFormValues = z.infer<typeof organizationFormSchema>;
 
 export default function OrganizationSettingsPage() {
   const { toast } = useToast();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   const { data: settings, isLoading } = useQuery<OrganizationSettings>({
     queryKey: ["/api/organization"],
   });
+
+  const handleFileUpload = async (file: File, type: "logo" | "favicon") => {
+    const setUploading = type === "logo" ? setUploadingLogo : setUploadingFavicon;
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", type);
+
+      const token = getAuthToken();
+      const response = await fetch("/api/organization/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Upload failed");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
+      toast({
+        title: "Upload Successful",
+        description: `${type === "logo" ? "Logo" : "Favicon"} has been uploaded.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileDelete = async (type: "logo" | "favicon") => {
+    try {
+      await apiRequest("DELETE", "/api/organization/upload", { type });
+      queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
+      toast({
+        title: "Deleted",
+        description: `${type === "logo" ? "Logo" : "Favicon"} has been removed.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete file",
+        variant: "destructive",
+      });
+    }
+  };
 
   const form = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationFormSchema),
@@ -323,35 +383,144 @@ export default function OrganizationSettingsPage() {
                     <CardDescription>Customize your organization's visual identity</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="logoUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Logo URL</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://example.com/logo.png" {...field} value={field.value || ""} data-testid="input-logo-url" />
-                            </FormControl>
-                            <FormDescription>URL to your organization's logo</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="faviconUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Favicon URL</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://example.com/favicon.ico" {...field} value={field.value || ""} data-testid="input-favicon-url" />
-                            </FormControl>
-                            <FormDescription>URL to your browser tab icon</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Organization Logo</div>
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {settings?.logoUrl ? (
+                            <div className="space-y-3">
+                              <div className="flex justify-center">
+                                <img 
+                                  src={settings.logoUrl} 
+                                  alt="Logo" 
+                                  className="max-h-24 max-w-full object-contain"
+                                  data-testid="img-logo-preview"
+                                />
+                              </div>
+                              <div className="flex justify-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => logoInputRef.current?.click()}
+                                  disabled={uploadingLogo}
+                                  data-testid="button-change-logo"
+                                >
+                                  {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                  <span className="ml-2">Change</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleFileDelete("logo")}
+                                  data-testid="button-delete-logo"
+                                >
+                                  <X className="h-4 w-4" />
+                                  <span className="ml-2">Remove</span>
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer py-6"
+                              onClick={() => logoInputRef.current?.click()}
+                            >
+                              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                {uploadingLogo ? (
+                                  <Loader2 className="h-8 w-8 animate-spin" />
+                                ) : (
+                                  <Image className="h-8 w-8" />
+                                )}
+                                <span className="text-sm">Click to upload logo</span>
+                                <span className="text-xs">PNG, JPG, GIF, SVG (max 2MB)</span>
+                              </div>
+                            </div>
+                          )}
+                          <input
+                            ref={logoInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file, "logo");
+                              e.target.value = "";
+                            }}
+                            data-testid="input-logo-file"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Recommended: 200x50px or similar aspect ratio</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Favicon</div>
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {settings?.faviconUrl ? (
+                            <div className="space-y-3">
+                              <div className="flex justify-center">
+                                <img 
+                                  src={settings.faviconUrl} 
+                                  alt="Favicon" 
+                                  className="h-12 w-12 object-contain"
+                                  data-testid="img-favicon-preview"
+                                />
+                              </div>
+                              <div className="flex justify-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => faviconInputRef.current?.click()}
+                                  disabled={uploadingFavicon}
+                                  data-testid="button-change-favicon"
+                                >
+                                  {uploadingFavicon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                  <span className="ml-2">Change</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleFileDelete("favicon")}
+                                  data-testid="button-delete-favicon"
+                                >
+                                  <X className="h-4 w-4" />
+                                  <span className="ml-2">Remove</span>
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer py-6"
+                              onClick={() => faviconInputRef.current?.click()}
+                            >
+                              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                {uploadingFavicon ? (
+                                  <Loader2 className="h-8 w-8 animate-spin" />
+                                ) : (
+                                  <Image className="h-8 w-8" />
+                                )}
+                                <span className="text-sm">Click to upload favicon</span>
+                                <span className="text-xs">PNG, ICO, SVG (max 2MB)</span>
+                              </div>
+                            </div>
+                          )}
+                          <input
+                            ref={faviconInputRef}
+                            type="file"
+                            accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file, "favicon");
+                              e.target.value = "";
+                            }}
+                            data-testid="input-favicon-file"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Recommended: 32x32px or 64x64px square</p>
+                      </div>
                     </div>
 
                     <Separator />
