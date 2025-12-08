@@ -5,8 +5,8 @@ import { storage } from "./storage";
 import type { User, SafeUser } from "@shared/schema";
 import type { Express } from "express";
 import session from "express-session";
-import { RedisStore } from "connect-redis";
-import { createClient } from "redis";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 
 const SALT_ROUNDS = 10;
 
@@ -24,38 +24,24 @@ export function getSafeUser(user: User): SafeUser {
 }
 
 function createSessionStore() {
-  const redisUrl = process.env.REDIS_URL;
+  const databaseUrl = process.env.DATABASE_URL;
   
-  if (redisUrl) {
-    try {
-      const redisClient = createClient({
-        url: redisUrl,
-      });
-      
-      redisClient.on("error", (err) => {
-        console.error("Redis connection error:", err);
-      });
-      
-      redisClient.on("connect", () => {
-        console.log("Connected to Redis for session storage");
-      });
-
-      redisClient.connect().catch((err) => {
-        console.error("Failed to connect to Redis:", err);
-      });
-
-      return new RedisStore({
-        client: redisClient,
-        prefix: "pcvisor:sess:",
-        ttl: 60 * 60 * 24 * 30,
-      });
-    } catch (error) {
-      console.warn("Redis not available, falling back to memory store:", error);
-      return undefined;
-    }
+  if (databaseUrl) {
+    console.log("Using PostgreSQL for session storage");
+    const PgSession = connectPgSimple(session);
+    const pool = new pg.Pool({
+      connectionString: databaseUrl,
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+    });
+    
+    return new PgSession({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true,
+    });
   }
   
-  console.log("REDIS_URL not set, using memory store for sessions");
+  console.log("DATABASE_URL not set, sessions will not persist");
   return undefined;
 }
 

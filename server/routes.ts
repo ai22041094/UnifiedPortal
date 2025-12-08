@@ -114,9 +114,17 @@ export async function registerRoutes(
         if (err) {
           return next(err);
         }
-        return res.json({
-          message: "Login successful",
-          user
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return next(saveErr);
+          }
+          console.log("Session saved, ID:", req.sessionID);
+          console.log("Session user:", req.session.passport);
+          return res.json({
+            message: "Login successful",
+            user,
+            sessionId: req.sessionID
+          });
         });
       });
     })(req, res, next);
