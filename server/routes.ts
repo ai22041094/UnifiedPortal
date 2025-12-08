@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -740,6 +740,33 @@ export async function registerRoutes(
         message: "Process details ingested successfully",
         taskGuid: data.taskguid
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // Organization Settings Routes
+  // ============================================
+
+  app.get("/api/organization", requireAuth, async (req, res, next) => {
+    try {
+      const settings = await storage.getOrganizationSettings();
+      res.json(settings || {});
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/organization", requireAdmin, async (req, res, next) => {
+    try {
+      const result = updateOrganizationSettingsSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      const currentUser = req.user as SafeUser;
+      const settings = await storage.updateOrganizationSettings(result.data, currentUser.id);
+      res.json(settings);
     } catch (error) {
       next(error);
     }

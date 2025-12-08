@@ -44,11 +44,11 @@ const adminMenuItems = [
     title: "Organization Settings",
     description: "Manage organization details and branding",
     icon: Building,
-    href: "#",
+    href: "/admin/organization",
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
     permission: "admin.organization",
-    available: false,
+    available: true,
   },
   {
     id: "audit-logs",

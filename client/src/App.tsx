@@ -18,6 +18,7 @@ import ServiceDesk from "@/pages/apps/ServiceDesk";
 import EPM from "@/pages/apps/EPM";
 import UserMaster from "@/pages/admin/UserMaster";
 import RoleMaster from "@/pages/admin/RoleMaster";
+import OrganizationSettings from "@/pages/admin/OrganizationSettings";
 
 function Router() {
   return (
@@ -51,6 +52,11 @@ function Router() {
       <Route path="/admin/roles">
         <ProtectedRoute>
           <RoleMaster />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/organization">
+        <ProtectedRoute>
+          <OrganizationSettings />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">
