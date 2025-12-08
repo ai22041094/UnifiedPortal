@@ -343,3 +343,92 @@ export const updateNotificationSchema = insertNotificationSchema.partial().pick(
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type UpdateNotification = z.infer<typeof updateNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Security Settings table
+export const securitySettings = pgTable("security_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  minPasswordLength: text("min_password_length").default("8"),
+  requireUppercase: boolean("require_uppercase").default(true),
+  requireLowercase: boolean("require_lowercase").default(true),
+  requireNumbers: boolean("require_numbers").default(true),
+  requireSpecialChars: boolean("require_special_chars").default(true),
+  passwordExpiryDays: text("password_expiry_days").default("90"),
+  passwordHistoryCount: text("password_history_count").default("5"),
+  maxLoginAttempts: text("max_login_attempts").default("5"),
+  lockoutDurationMinutes: text("lockout_duration_minutes").default("30"),
+  sessionTimeoutMinutes: text("session_timeout_minutes").default("60"),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaMethod: varchar("mfa_method", { length: 50 }).default("email"),
+  ipWhitelistEnabled: boolean("ip_whitelist_enabled").default(false),
+  ipWhitelist: text("ip_whitelist"),
+  auditLogRetentionDays: text("audit_log_retention_days").default("365"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id),
+});
+
+export const insertSecuritySettingsSchema = createInsertSchema(securitySettings, {
+  minPasswordLength: z.string().default("8"),
+  requireUppercase: z.boolean().default(true),
+  requireLowercase: z.boolean().default(true),
+  requireNumbers: z.boolean().default(true),
+  requireSpecialChars: z.boolean().default(true),
+  passwordExpiryDays: z.string().default("90"),
+  passwordHistoryCount: z.string().default("5"),
+  maxLoginAttempts: z.string().default("5"),
+  lockoutDurationMinutes: z.string().default("30"),
+  sessionTimeoutMinutes: z.string().default("60"),
+  mfaEnabled: z.boolean().default(false),
+  mfaMethod: z.enum(["email", "totp", "sms"]).default("email"),
+  ipWhitelistEnabled: z.boolean().default(false),
+  ipWhitelist: z.string().optional().nullable(),
+  auditLogRetentionDays: z.string().default("365"),
+}).omit({
+  id: true,
+  updatedAt: true,
+  updatedByUserId: true,
+});
+
+export const updateSecuritySettingsSchema = insertSecuritySettingsSchema.partial();
+
+export type InsertSecuritySettings = z.infer<typeof insertSecuritySettingsSchema>;
+export type UpdateSecuritySettings = z.infer<typeof updateSecuritySettingsSchema>;
+export type SecuritySettings = typeof securitySettings.$inferSelect;
+
+// Audit Logs table
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  userId: varchar("user_id").references(() => users.id),
+  username: text("username"),
+  action: varchar("action", { length: 100 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  resourceType: varchar("resource_type", { length: 100 }),
+  resourceId: varchar("resource_id", { length: 100 }),
+  resourceName: text("resource_name"),
+  details: text("details"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  status: varchar("status", { length: 20 }).default("success"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs, {
+  userId: z.string().optional().nullable(),
+  username: z.string().optional().nullable(),
+  action: z.string().min(1).max(100),
+  category: z.enum(["auth", "user", "role", "settings", "security", "system", "data"]),
+  resourceType: z.string().max(100).optional().nullable(),
+  resourceId: z.string().max(100).optional().nullable(),
+  resourceName: z.string().optional().nullable(),
+  details: z.string().optional().nullable(),
+  metadata: z.record(z.unknown()).optional().nullable(),
+  ipAddress: z.string().max(45).optional().nullable(),
+  userAgent: z.string().optional().nullable(),
+  status: z.enum(["success", "failure", "warning"]).default("success"),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;

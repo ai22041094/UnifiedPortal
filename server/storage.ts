@@ -16,6 +16,10 @@ import {
   type InsertPushSubscription,
   type Notification,
   type InsertNotification,
+  type SecuritySettings,
+  type UpdateSecuritySettings,
+  type AuditLog,
+  type InsertAuditLog,
   users, 
   roles,
   epmApiKeys,
@@ -23,9 +27,11 @@ import {
   organizationSettings,
   notificationSettings,
   pushSubscriptions,
-  notifications
+  notifications,
+  securitySettings,
+  auditLogs
 } from "@shared/schema";
-import { eq, and, isNull, gt, desc } from "drizzle-orm";
+import { eq, and, isNull, gt, desc, gte, lte, or, ilike } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
@@ -81,6 +87,24 @@ export interface IStorage {
   markNotificationAsRead(id: string, userId: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<number>;
   deleteNotification(id: string, userId: string): Promise<boolean>;
+  
+  // Security Settings methods
+  getSecuritySettings(): Promise<SecuritySettings | undefined>;
+  updateSecuritySettings(data: UpdateSecuritySettings, updatedByUserId: string): Promise<SecuritySettings>;
+  
+  // Audit Log methods
+  getAuditLogs(filters?: {
+    category?: string;
+    action?: string;
+    userId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: AuditLog[]; total: number }>;
+  createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+  deleteOldAuditLogs(beforeDate: Date): Promise<number>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -389,6 +413,101 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  // Security Settings methods
+  async getSecuritySettings(): Promise<SecuritySettings | undefined> {
+    const [settings] = await db.select().from(securitySettings).limit(1);
+    return settings;
+  }
+
+  async updateSecuritySettings(data: UpdateSecuritySettings, updatedByUserId: string): Promise<SecuritySettings> {
+    const existing = await this.getSecuritySettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(securitySettings)
+        .set({ ...data, updatedAt: new Date(), updatedByUserId })
+        .where(eq(securitySettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(securitySettings)
+        .values({ ...data, updatedByUserId } as any)
+        .returning();
+      return created;
+    }
+  }
+
+  // Audit Log methods
+  async getAuditLogs(filters?: {
+    category?: string;
+    action?: string;
+    userId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: AuditLog[]; total: number }> {
+    const conditions = [];
+    
+    if (filters?.category) {
+      conditions.push(eq(auditLogs.category, filters.category));
+    }
+    if (filters?.action) {
+      conditions.push(ilike(auditLogs.action, `%${filters.action}%`));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(auditLogs.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(auditLogs.createdAt, filters.endDate));
+    }
+    if (filters?.search) {
+      conditions.push(
+        or(
+          ilike(auditLogs.action, `%${filters.search}%`),
+          ilike(auditLogs.username, `%${filters.search}%`),
+          ilike(auditLogs.resourceName, `%${filters.search}%`),
+          ilike(auditLogs.details, `%${filters.search}%`)
+        )
+      );
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const totalResult = await db
+      .select()
+      .from(auditLogs)
+      .where(whereClause);
+    
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .where(whereClause)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(filters?.limit || 50)
+      .offset(filters?.offset || 0);
+    
+    return { logs, total: totalResult.length };
+  }
+
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(auditLogs).values(data).returning();
+    return log;
+  }
+
+  async deleteOldAuditLogs(beforeDate: Date): Promise<number> {
+    const result = await db
+      .delete(auditLogs)
+      .where(lte(auditLogs.createdAt, beforeDate))
+      .returning();
+    return result.length;
   }
 }
 

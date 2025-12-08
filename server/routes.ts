@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import webPush from "web-push";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
@@ -1254,6 +1254,142 @@ export async function registerRoutes(
         failed,
         total: subscriptions.length,
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // SECURITY SETTINGS ROUTES
+  // ============================================
+
+  app.get("/api/security", requireAdmin, async (req, res, next) => {
+    try {
+      const settings = await storage.getSecuritySettings();
+      res.json(settings || {
+        minPasswordLength: "8",
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: true,
+        requireSpecialChars: true,
+        passwordExpiryDays: "90",
+        passwordHistoryCount: "5",
+        maxLoginAttempts: "5",
+        lockoutDurationMinutes: "30",
+        sessionTimeoutMinutes: "60",
+        mfaEnabled: false,
+        mfaMethod: "email",
+        ipWhitelistEnabled: false,
+        ipWhitelist: null,
+        auditLogRetentionDays: "365",
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/security", requireAdmin, async (req, res, next) => {
+    try {
+      const result = updateSecuritySettingsSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      
+      const currentUser = req.user as SafeUser;
+      const settings = await storage.updateSecuritySettings(result.data, currentUser.id);
+      
+      // Log the security settings update
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "update_security_settings",
+        category: "security",
+        resourceType: "security_settings",
+        details: "Security settings were updated",
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+      
+      res.json(settings);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // AUDIT LOGS ROUTES
+  // ============================================
+
+  app.get("/api/audit-logs", requireAdmin, async (req, res, next) => {
+    try {
+      const { category, action, userId, startDate, endDate, search, limit, offset } = req.query;
+      
+      const filters: {
+        category?: string;
+        action?: string;
+        userId?: string;
+        startDate?: Date;
+        endDate?: Date;
+        search?: string;
+        limit?: number;
+        offset?: number;
+      } = {};
+      
+      if (category && typeof category === "string") filters.category = category;
+      if (action && typeof action === "string") filters.action = action;
+      if (userId && typeof userId === "string") filters.userId = userId;
+      if (startDate && typeof startDate === "string") filters.startDate = new Date(startDate);
+      if (endDate && typeof endDate === "string") filters.endDate = new Date(endDate);
+      if (search && typeof search === "string") filters.search = search;
+      if (limit) filters.limit = parseInt(limit as string);
+      if (offset) filters.offset = parseInt(offset as string);
+      
+      const result = await storage.getAuditLogs(filters);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/audit-logs/categories", requireAdmin, async (_req, res) => {
+    res.json({
+      categories: [
+        { id: "auth", name: "Authentication" },
+        { id: "user", name: "User Management" },
+        { id: "role", name: "Role Management" },
+        { id: "settings", name: "Settings" },
+        { id: "security", name: "Security" },
+        { id: "system", name: "System" },
+        { id: "data", name: "Data Operations" },
+      ]
+    });
+  });
+
+  app.post("/api/audit-logs/cleanup", requireAdmin, async (req, res, next) => {
+    try {
+      const { beforeDate } = req.body;
+      if (!beforeDate) {
+        return res.status(400).json({ message: "beforeDate is required" });
+      }
+      
+      const currentUser = req.user as SafeUser;
+      const deletedCount = await storage.deleteOldAuditLogs(new Date(beforeDate));
+      
+      // Log the cleanup action
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "cleanup_audit_logs",
+        category: "security",
+        resourceType: "audit_logs",
+        details: `Deleted ${deletedCount} audit log entries before ${beforeDate}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+      
+      res.json({ message: `Deleted ${deletedCount} audit log entries`, deletedCount });
     } catch (error) {
       next(error);
     }

@@ -20,6 +20,8 @@ import UserMaster from "@/pages/admin/UserMaster";
 import RoleMaster from "@/pages/admin/RoleMaster";
 import OrganizationSettings from "@/pages/admin/OrganizationSettings";
 import NotificationSettings from "@/pages/admin/NotificationSettings";
+import SecuritySettings from "@/pages/admin/SecuritySettings";
+import AuditLogs from "@/pages/admin/AuditLogs";
 
 function Router() {
   return (
@@ -63,6 +65,16 @@ function Router() {
       <Route path="/admin/notifications">
         <ProtectedRoute>
           <NotificationSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/security">
+        <ProtectedRoute>
+          <SecuritySettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/audit-logs">
+        <ProtectedRoute>
+          <AuditLogs />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">
