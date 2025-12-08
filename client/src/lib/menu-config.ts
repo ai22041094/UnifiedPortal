@@ -282,9 +282,15 @@ export const MENU_ITEMS: MenuGroup[] = [
         icon: Plug,
         children: [
           {
+            id: "epm.integrations.api-keys",
+            label: "API Keys",
+            icon: Key,
+            href: "/apps/epm/integrations/api-keys",
+          },
+          {
             id: "epm.integrations.api-endpoints",
-            label: "API Endpoints",
-            icon: Webhook,
+            label: "Ingested Data",
+            icon: Database,
             href: "/apps/epm/integrations/api-endpoints",
           },
           {
@@ -295,7 +301,7 @@ export const MENU_ITEMS: MenuGroup[] = [
           },
           {
             id: "epm.integrations.api-documentation",
-            label: "API Documentation (Swagger/OpenAPI)",
+            label: "API Documentation",
             icon: FileCode,
             href: "/apps/epm/integrations/api-documentation",
           },

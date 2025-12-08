@@ -7,12 +7,13 @@ import {
   type ApiKey,
   type InsertApiKey,
   type InsertProcessDetails,
+  type ProcessDetails,
   users, 
   roles,
   epmApiKeys,
   pcvProcessDetails
 } from "@shared/schema";
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, gt, desc } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
@@ -43,6 +44,7 @@ export interface IStorage {
   // Process Details methods
   createProcessDetails(data: InsertProcessDetails): Promise<void>;
   upsertProcessDetails(data: InsertProcessDetails): Promise<void>;
+  getAllProcessDetails(limit?: number): Promise<ProcessDetails[]>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -188,6 +190,14 @@ export class PostgresStorage implements IStorage {
           tag2: data.tag2,
         },
       });
+  }
+
+  async getAllProcessDetails(limit: number = 100): Promise<ProcessDetails[]> {
+    return db
+      .select()
+      .from(pcvProcessDetails)
+      .orderBy(desc(pcvProcessDetails.eventDt))
+      .limit(limit);
   }
 }
 

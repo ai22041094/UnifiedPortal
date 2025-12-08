@@ -462,6 +462,34 @@ export async function registerRoutes(
     }
   });
 
+  // Get all ingested process details
+  app.get("/api/epm/process-details", requireAdmin, async (req, res, next) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const processDetails = await storage.getAllProcessDetails(limit);
+      const formattedDetails = processDetails.map(pd => ({
+        id: pd.id,
+        taskGuid: pd.taskGuid,
+        agentGuid: pd.agentGuid,
+        processId: pd.processId,
+        processName: pd.processName,
+        mainWindowTitle: pd.mainWindowTitle,
+        startTime: pd.startTime,
+        eventDt: pd.eventDt,
+        idleStatus: pd.idleStatus,
+        urlName: pd.urlName,
+        urlVisitCount: pd.urlVisitCount,
+        urlDomain: pd.urlDomain,
+        lapsedTime: pd.lapsedTime,
+        tag1: pd.tag1,
+        tag2: pd.tag2,
+      }));
+      res.json(formattedDetails);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // ============================================
   // External API Endpoints (API Key Protected)
   // ============================================

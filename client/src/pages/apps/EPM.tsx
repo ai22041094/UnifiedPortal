@@ -170,9 +170,10 @@ const menuItems: MenuItem[] = [
     title: "Integrations & API",
     icon: Plug,
     children: [
-      { id: "epm.integrations.api-endpoints", title: "API Endpoints", icon: Webhook, href: "/apps/epm/integrations/api-endpoints" },
+      { id: "epm.integrations.api-keys", title: "API Keys", icon: Key, href: "/apps/epm/integrations/api-keys" },
+      { id: "epm.integrations.api-endpoints", title: "Ingested Data", icon: Database, href: "/apps/epm/integrations/api-endpoints" },
       { id: "epm.integrations.integration-setup", title: "Integration Setup", icon: Plug, href: "/apps/epm/integrations/integration-setup" },
-      { id: "epm.integrations.api-documentation", title: "API Documentation (Swagger/OpenAPI)", icon: FileCode, href: "/apps/epm/integrations/api-documentation" },
+      { id: "epm.integrations.api-documentation", title: "API Documentation", icon: FileCode, href: "/apps/epm/integrations/api-documentation" },
     ],
   },
   {
@@ -535,6 +536,105 @@ function ApiKeysContent() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface ProcessDetailsData {
+  id: number;
+  taskGuid: string;
+  agentGuid: string | null;
+  processId: string | null;
+  processName: string | null;
+  mainWindowTitle: string | null;
+  startTime: string | null;
+  eventDt: string | null;
+  idleStatus: boolean | null;
+  urlName: string | null;
+  urlDomain: string | null;
+  lapsedTime: string | null;
+  tag1: string | null;
+  tag2: string | null;
+}
+
+function ProcessDetailsContent() {
+  const { data: processDetails, isLoading } = useQuery<ProcessDetailsData[]>({
+    queryKey: ["/api/epm/process-details"],
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Ingested Process Data</h2>
+        <p className="text-muted-foreground">View process activity data received from external agents</p>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : !processDetails?.length ? (
+            <div className="p-12 text-center">
+              <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No Data Yet</h3>
+              <p className="text-muted-foreground">No process details have been ingested yet. Use the external API to send data.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Process</TableHead>
+                    <TableHead>Window Title</TableHead>
+                    <TableHead>Agent ID</TableHead>
+                    <TableHead>URL/Domain</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Tags</TableHead>
+                    <TableHead>Event Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processDetails.map((item) => (
+                    <TableRow key={item.taskGuid} data-testid={`row-process-${item.taskGuid}`}>
+                      <TableCell>
+                        <div className="font-medium">{item.processName || "-"}</div>
+                        <div className="text-xs text-muted-foreground">{item.processId || "-"}</div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={item.mainWindowTitle || ""}>
+                        {item.mainWindowTitle || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">{item.agentGuid || "-"}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{item.urlDomain || "-"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.idleStatus ? "secondary" : "default"}>
+                          {item.idleStatus ? "Idle" : "Active"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{item.lapsedTime ? `${item.lapsedTime}s` : "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {item.tag1 && <Badge variant="outline" className="text-xs">{item.tag1}</Badge>}
+                          {item.tag2 && <Badge variant="outline" className="text-xs">{item.tag2}</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {item.eventDt ? format(new Date(item.eventDt), "MMM d, yyyy HH:mm") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -989,8 +1089,10 @@ export default function EPM() {
             <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
               {isDashboard ? (
                 <DashboardContent />
-              ) : location === "/apps/epm/integrations/api-endpoints" ? (
+              ) : location === "/apps/epm/integrations/api-keys" ? (
                 <ApiKeysContent />
+              ) : location === "/apps/epm/integrations/api-endpoints" ? (
+                <ProcessDetailsContent />
               ) : location === "/apps/epm/integrations/api-documentation" ? (
                 <ApiDocumentationContent />
               ) : (
