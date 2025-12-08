@@ -103,6 +103,25 @@ Preferred communication style: Simple, everyday language.
 **Role Master** (`/admin/roles`)
 - Full CRUD operations for role management
 - Menu permission configuration using centralized menu system
+
+### Asset Lifecycle Management (ALM) Module
+
+**Dashboard System** (`/apps/alm`)
+The ALM module features 6 comprehensive dashboards with KPI cards and metrics:
+
+- **Overview Dashboard** (`/apps/alm`) - Total assets, compliance rate, asset value, critical alerts, asset distribution by category, health status, upcoming renewals, recent activities
+- **Hardware Asset Dashboard** (`/apps/alm/dashboard/hardware`) - Device counts by type (laptops, desktops, monitors, mobile, printers), lifecycle distribution, warranty status, vendor breakdown, locations, maintenance schedule, depreciation summary
+- **Software Asset Dashboard** (`/apps/alm/dashboard/software`) - License count and compliance, utilization by category, license types, top software by spend, upcoming renewals, compliance alerts, version distribution, cost optimization opportunities
+- **CIO Dashboard** (`/apps/alm/dashboard/cio`) - Strategic IT view with digital maturity score, technology roadmap alignment, tech stack health, digital transformation KPIs, risk and compliance summary
+- **CFO Dashboard** (`/apps/alm/dashboard/cfo`) - Financial view with IT investment, ROI, cost savings, budget variance, spend by category, depreciation, cost optimization, CapEx vs OpEx, budget forecast, vendor spend
+- **COO Dashboard** (`/apps/alm/dashboard/coo`) - Operational view with asset utilization, deployment time, SLA compliance, maintenance efficiency, work orders, service levels, asset health, inventory status, resource allocation
+
+**Design Patterns**
+- Reusable KPICard component for consistent metric display
+- Color-coded status indicators (green/yellow/red) for health and urgency
+- Progress bars for utilization and distribution visualization
+- Responsive grid layouts adapting to screen size
+- Dark mode support with appropriate color tokens
 - Role activation/deactivation
 - Permissions stored as JSON array
 
