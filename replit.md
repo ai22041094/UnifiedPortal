@@ -139,6 +139,14 @@ The ALM module features 6 comprehensive dashboards with KPI cards and metrics:
 - Event-based notification triggers (user created, deleted, password changes, role changes, login events)
 - Push subscription management with active subscription display
 
+**In-App Notifications**
+- NotificationBell component (`client/src/components/NotificationBell.tsx`) with dropdown popover showing recent notifications
+- Available on all main pages: Dashboard, Custom Portal, Asset Lifecycle Management, Service Desk, and EPM
+- Shows unread notification count badge
+- Supports marking notifications as read (individually or all at once)
+- Notification types: tickets, assets, licenses, users
+- Currently uses mock data - ready for backend integration
+
 **Admin Credentials**
 - Default admin user: username `admin`, password `P@ssw0rd@123`
 
