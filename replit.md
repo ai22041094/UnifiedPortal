@@ -130,6 +130,22 @@ The ALM module features 6 comprehensive dashboards with KPI cards and metrics:
 - Hierarchical menu structure supporting nested items
 - Used for role-based permission assignment
 
+**Security Settings** (`/admin/security`)
+- Password policy configuration (minimum length, uppercase, lowercase, numbers, special characters)
+- Session timeout management (in minutes)
+- Multi-factor authentication (MFA) settings with enforcement options
+- IP restriction management with allowed and blocked IP lists
+- Account lockout settings (max attempts, lockout duration)
+- All settings protected by admin-only access
+
+**Audit Logs** (`/admin/audit-logs`)
+- Comprehensive activity tracking for security-critical actions
+- Categories: authentication, security, user management, system, data changes
+- Filterable by username, action, category, resource type, status, and date range
+- Pagination support for large log sets
+- Automatic logging of login attempts, user changes, role changes, and security settings updates
+- Cleanup functionality for old logs (admin-only)
+
 **Notification Settings** (`/admin/notifications`)
 - Push notification configuration with VAPID key management
 - Admin-only VAPID key generation and status checking via `/api/push/vapid-status` and `/api/push/generate-vapid-keys`
