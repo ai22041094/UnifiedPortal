@@ -95,3 +95,5 @@ expertMode = true
 
 [userenv.shared]
 TRUST_PROXY = "1"
+VAPID_PUBLIC_KEY = "BKrrzx8wDi84jKxCBe-AI7zkCZiJ7mEIEgwQVqyCgLdeupUAMFLYunGVyCJ1GbK3gFd7x9vtrP-kOjuL98xhyuI"
+VAPID_SUBJECT = "mailto:admin@pcvisor.com"
