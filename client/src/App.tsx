@@ -45,7 +45,7 @@ function Router() {
           <AssetManagement />
         </ProtectedRoute>
       </Route>
-      <Route path="/apps/alm/:rest*">
+      <Route path="/apps/alm/*">
         <ProtectedRoute>
           <AssetManagement />
         </ProtectedRoute>
@@ -60,7 +60,7 @@ function Router() {
           <EPM />
         </ProtectedRoute>
       </Route>
-      <Route path="/apps/epm/:rest*">
+      <Route path="/apps/epm/*">
         <ProtectedRoute>
           <EPM />
         </ProtectedRoute>
