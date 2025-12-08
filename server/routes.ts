@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import webPush from "web-push";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
@@ -947,6 +947,81 @@ export async function registerRoutes(
         return res.status(400).json({ message: "SMTP configuration is incomplete" });
       }
       res.json({ message: "Test email functionality will be implemented with email service integration" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // USER NOTIFICATIONS ROUTES (In-App Notifications)
+  // ============================================
+
+  app.get("/api/user/notifications", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const notifications = await storage.getNotificationsByUserId(currentUser.id, limit);
+      res.json(notifications);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/user/notifications/unread-count", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const count = await storage.getUnreadNotificationCount(currentUser.id);
+      res.json({ count });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/user/notifications/:id/read", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const notification = await storage.markNotificationAsRead(req.params.id, currentUser.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json(notification);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/user/notifications/mark-all-read", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const count = await storage.markAllNotificationsAsRead(currentUser.id);
+      res.json({ message: `Marked ${count} notifications as read`, count });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/user/notifications/:id", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const deleted = await storage.deleteNotification(req.params.id, currentUser.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json({ message: "Notification deleted" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Admin route to create notifications for users
+  app.post("/api/admin/notifications", requireAdmin, async (req, res, next) => {
+    try {
+      const result = insertNotificationSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      const notification = await storage.createNotification(result.data);
+      res.status(201).json(notification);
     } catch (error) {
       next(error);
     }

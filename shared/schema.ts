@@ -313,3 +313,33 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+// Notifications table for in-app notifications
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: varchar("type", { length: 50 }).notNull().default("info"),
+  isRead: boolean("is_read").default(false),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications, {
+  userId: z.string(),
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(500).optional().nullable(),
+  type: z.enum(["ticket", "asset", "license", "user", "info", "warning", "error"]).default("info"),
+  isRead: z.boolean().default(false),
+  metadata: z.record(z.unknown()).optional().nullable(),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateNotificationSchema = insertNotificationSchema.partial().pick({ isRead: true });
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type UpdateNotification = z.infer<typeof updateNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
