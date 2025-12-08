@@ -9,7 +9,6 @@ import {
   Home,
   Settings,
   LogOut,
-  Bell,
   Users,
   Shield
 } from "lucide-react";
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
 import ProfileDropdown from "@/components/ProfileDropdown";
+import NotificationBell from "@/components/NotificationBell";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -127,10 +127,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
-            </Button>
+            <NotificationBell />
             <ProfileDropdown />
           </div>
         </header>

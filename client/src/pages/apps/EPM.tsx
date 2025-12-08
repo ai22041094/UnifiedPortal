@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { hasAppAccess } from "@/lib/menu-config";
 import AccessDenied from "@/components/AccessDenied";
 import ProfileDropdown from "@/components/ProfileDropdown";
+import NotificationBell from "@/components/NotificationBell";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1090,10 +1091,7 @@ export default function EPM() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
-              </Button>
+              <NotificationBell />
               <ProfileDropdown />
             </div>
           </header>

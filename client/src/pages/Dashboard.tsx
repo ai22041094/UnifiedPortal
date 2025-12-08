@@ -7,7 +7,6 @@ import {
   HeadphonesIcon,
   BarChart3,
   LogOut,
-  Bell,
   Users,
   Clock,
   Activity,
@@ -17,6 +16,7 @@ import {
   KeyRound,
   ChevronDown
 } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -143,10 +143,7 @@ export default function Dashboard() {
           {renderLogo()}
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
-            </Button>
+            <NotificationBell />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
