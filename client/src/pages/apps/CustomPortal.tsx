@@ -5,6 +5,7 @@ import { useRBAC } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { hasAppAccess } from "@/lib/menu-config";
 import AccessDenied from "@/components/AccessDenied";
+import ProfileDropdown from "@/components/ProfileDropdown";
 import {
   SidebarProvider,
   Sidebar,
@@ -483,9 +484,7 @@ export default function CustomPortal() {
                 <Bell className="h-5 w-5 text-muted-foreground" />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
               </Button>
-              <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-medium" data-testid="text-user-initials">
-                {userInitials}
-              </div>
+              <ProfileDropdown />
             </div>
           </header>
 

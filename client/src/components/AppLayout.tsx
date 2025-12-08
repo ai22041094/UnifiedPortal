@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
+import ProfileDropdown from "@/components/ProfileDropdown";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -130,9 +131,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
               <Bell className="h-5 w-5 text-muted-foreground" />
               <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full" />
             </Button>
-            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-medium">
-              {userInitials}
-            </div>
+            <ProfileDropdown />
           </div>
         </header>
 
