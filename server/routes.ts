@@ -781,6 +781,39 @@ export async function registerRoutes(
   // Organization Settings Routes
   // ============================================
 
+  // Public endpoint for organization branding (used by login page)
+  app.get("/api/organization/public", async (req, res, next) => {
+    try {
+      const settings = await storage.getOrganizationSettings();
+      if (settings) {
+        // Return only public-safe fields for branding
+        res.json({
+          organizationName: settings.organizationName,
+          tagline: settings.tagline,
+          logoUrl: settings.logoUrl,
+          faviconUrl: settings.faviconUrl,
+          primaryColor: settings.primaryColor,
+          secondaryColor: settings.secondaryColor,
+          footerText: settings.footerText,
+          copyrightText: settings.copyrightText,
+        });
+      } else {
+        res.json({
+          organizationName: "pcvisor",
+          tagline: "Unified Access Control & Enterprise Management",
+          logoUrl: null,
+          faviconUrl: null,
+          primaryColor: "#0066FF",
+          secondaryColor: "#6366F1",
+          footerText: null,
+          copyrightText: null,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/organization", requireAuth, async (req, res, next) => {
     try {
       const settings = await storage.getOrganizationSettings();

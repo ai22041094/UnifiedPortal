@@ -1,15 +1,27 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { LockKeyhole, User, ArrowRight } from "lucide-react";
+import { LockKeyhole, User, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import portalBg from "@assets/generated_images/blue_corporate_tech_background_with_city_and_network_lines.png";
+
+interface PublicOrgSettings {
+  organizationName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  footerText: string | null;
+  copyrightText: string | null;
+}
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -18,6 +30,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const { login } = useAuth();
   const { toast } = useToast();
+
+  const { data: orgSettings, isLoading: orgLoading } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +52,38 @@ export default function LoginPage() {
     }
   };
 
+  const organizationName = orgSettings?.organizationName || "pcvisor";
+  const tagline = orgSettings?.tagline || "Unified Access Control & Enterprise Management";
+  const logoUrl = orgSettings?.logoUrl;
+  const copyrightText = orgSettings?.copyrightText || `© ${new Date().getFullYear()} All rights reserved.`;
+
+  const renderLogo = (size: "large" | "small") => {
+    const dimensions = size === "large" ? { outer: "h-10 w-10", inner: "h-5 w-5" } : { outer: "h-8 w-8", inner: "h-4 w-4" };
+    const textSize = size === "large" ? "text-3xl" : "text-xl";
+    
+    if (logoUrl) {
+      return (
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoUrl} 
+            alt={organizationName} 
+            className={size === "large" ? "h-10 max-w-[200px] object-contain" : "h-8 max-w-[160px] object-contain"}
+            data-testid={`img-logo-${size}`}
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-3">
+        <div className={`${dimensions.outer} bg-white rounded-lg flex items-center justify-center`}>
+          <div className={`${dimensions.inner} bg-primary rounded-sm transform rotate-45`} />
+        </div>
+        <span className={`${textSize} font-bold tracking-tight`}>{organizationName}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="h-screen w-full flex bg-background">
       {/* Left Side - Visuals */}
@@ -49,14 +97,15 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-transparent mix-blend-multiply" />
         
         <div className="absolute bottom-20 left-20 z-20 text-white max-w-xl">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center">
-                <div className="h-5 w-5 bg-primary rounded-sm transform rotate-45" />
-              </div>
-            <span className="text-3xl font-bold tracking-tight">pcvisor</span>
+          <div className="mb-6">
+            {renderLogo("large")}
           </div>
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            Unified Access Control & <br/>Enterprise Management
+            {tagline.includes("&") ? (
+              <>
+                {tagline.split("&")[0].trim()} & <br/>{tagline.split("&")[1]?.trim()}
+              </>
+            ) : tagline}
           </h1>
           <p className="text-lg text-white/80">
             Securely manage your digital assets, services, and workforce performance from a single centralized platform.
@@ -67,11 +116,22 @@ export default function LoginPage() {
       {/* Right Side - Form */}
       <div className="w-full lg:w-[40%] h-full flex items-center justify-center p-8 relative overflow-y-auto">
         {/* Mobile Logo */}
-        <div className="absolute top-8 left-8 lg:hidden flex items-center gap-2">
-           <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        <div className="absolute top-8 left-8 lg:hidden">
+          {logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt={organizationName} 
+              className="h-8 max-w-[160px] object-contain"
+              data-testid="img-logo-mobile"
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+                <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">{organizationName}</span>
             </div>
-          <span className="text-xl font-bold tracking-tight">pcvisor</span>
+          )}
         </div>
 
         <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
@@ -133,8 +193,8 @@ export default function LoginPage() {
           </CardContent>
         </Card>
         
-        <footer className="absolute bottom-8 text-center text-xs text-muted-foreground w-full">
-          © 2025 Hitachi Systems India Pvt Ltd. Privacy Policy
+        <footer className="absolute bottom-8 text-center text-xs text-muted-foreground w-full" data-testid="text-copyright">
+          {copyrightText}
         </footer>
       </div>
     </div>

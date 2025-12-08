@@ -1,15 +1,28 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Package,
   HeadphonesIcon,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import portalBg from "@assets/generated_images/blue_corporate_tech_background_with_city_and_network_lines.png";
+
+interface PublicOrgSettings {
+  organizationName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  footerText: string | null;
+  copyrightText: string | null;
+}
 
 const apps = [
   {
@@ -39,7 +52,7 @@ const apps = [
   {
     id: "epm",
     title: "EPM",
-    description: "Optimize Performance, Enhance Productivity – Smart Workforce Insights!",
+    description: "Optimize Performance, Enhance Productivity - Smart Workforce Insights!",
     icon: BarChart3,
     href: "/apps/epm",
     color: "text-sky-500"
@@ -47,18 +60,45 @@ const apps = [
 ];
 
 export default function Portal() {
+  const { data: orgSettings, isLoading: orgLoading } = useQuery<PublicOrgSettings>({
+    queryKey: ["/api/organization/public"],
+  });
+
+  const organizationName = orgSettings?.organizationName || "pcvisor";
+  const logoUrl = orgSettings?.logoUrl;
+  const copyrightText = orgSettings?.copyrightText || `${organizationName} © ${new Date().getFullYear()}. All rights reserved.`;
+
+  const renderLogo = () => {
+    if (logoUrl) {
+      return (
+        <div className="flex items-center gap-2 mb-6">
+          <img 
+            src={logoUrl} 
+            alt={organizationName} 
+            className="h-8 max-w-[180px] object-contain"
+            data-testid="img-portal-logo"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-2 mb-6">
+        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+          <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        </div>
+        <span className="text-xl font-bold tracking-tight">{organizationName}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="h-screen w-full bg-background flex">
       {/* Left Content */}
       <div className="w-full lg:w-[55%] h-full flex flex-col p-8 lg:p-16 relative z-10 overflow-y-auto">
         <div className="max-w-2xl mx-auto w-full space-y-8 my-auto">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-                <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
-              </div>
-              <span className="text-xl font-bold tracking-tight">pcvisor</span>
-            </div>
+            {renderLogo()}
             
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -105,8 +145,8 @@ export default function Portal() {
             ))}
           </div>
 
-          <footer className="pt-12 text-sm text-muted-foreground">
-            Hitachi Systems India Pvt Ltd © 2025. All rights reserved.
+          <footer className="pt-12 text-sm text-muted-foreground" data-testid="text-portal-copyright">
+            {copyrightText}
           </footer>
         </div>
       </div>
@@ -124,7 +164,7 @@ export default function Portal() {
           className="absolute inset-0 bg-background"
           style={{
             clipPath: "polygon(0 0, 100% 0, 100% 100%, 20% 100%, 0 0)",
-            transform: "translateX(-1px) scaleX(-1)", // Mirroring the shape roughly to match image
+            transform: "translateX(-1px) scaleX(-1)",
             background: "linear-gradient(90deg, hsl(var(--background)) 0%, transparent 100%)"
           }} 
         />
