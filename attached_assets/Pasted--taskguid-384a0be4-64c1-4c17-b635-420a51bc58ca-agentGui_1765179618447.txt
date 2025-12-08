@@ -1,0 +1,15 @@
+{
+    "taskguid":  "384a0be4-64c1-4c17-b635-420a51bc58ca",
+    "agentGuid":  "340367429854671",
+    "ProcessId":  "chrome.exe",
+    "ProcessName":  "Google Chrome",
+    "MainWindowTitle":  "An Exclusive Student Offer  Just for You  Google Chrome",
+    "StartTime":  "16 July 2025 11:58:38",
+    "Eventdt":  "16 July 2025 11:58:38",
+    "IdleStatus":  0,
+    "Urlname":  "https://accounts.google.com/v3/signin/identifier?opparams=%253Fhd%253Damityonline.com\u0026dsh=S168294797%3A1752647320345884\u0026access_type=offline\u0026client_id=943150225317-u087m8ftadlv14u78a2un6d4hajl21hq.apps.googleusercontent.com\u0026hd=amityonline.com\u0026nonce=68774697571f2e262433e1c3\u0026o2v=2\u0026prompt=select_account\u0026redirect_uri=https%3A%2F%2Fservices.sheerid.com%2Frest%2Fv2%2Fverification%2Fsso%2Foidc_google\u0026response_type=code\u0026scope=openid+profile+email\u0026service=lso\u0026state=68774697571f2e262433e1c3\u0026flowName=GeneralOAuthFlow\u0026continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAPvhxKQ40Uw4dVJuxc5_gWinILd4ioQ7HTPz6pOA3dKinCou9rrauuPVAeMrbSmInVaVxcF3NcZm7KC6mWGKgvO11p7J7Hg-oDLEKsgpW7dRQ2R6fRyoI0vcdMxfS0eD71Q1z-IDActj8qPYSjbMkln4wjwIlYsz1C9tFjCrTShcBk70aVTxawQfC8f64-LwbZ1rQDRTo543ozFJZiHi36CL6IVZiUXnWh9i0IZKZZrJrfmWbQaQ-eJux3cjSkxv5WgyQkk7epUBEXRXJx3WfMYJpFSsfvX5LTBdz_ya34ZlwNzi1jFgr4mqAkcw3IgMIAx9gXu9SZautozrzaowCML8aBwblKi31vXxOg80LRPjkBwKsUQ0XJeEA5C-fQWoat6F8Fv1EygcuojkngyQ5_8kpZARpJHtnP3JXfA3mIGb834rQeDrsyfyye_QnZWsM6jLc3UmzgLmaC_1ULdTNn-9bPMLxFILwxzY7J8img133BtS4o%26flowName%3DGeneralOAuthFlow%26as%3DS168294797%253A1752647320345884%26client_id%3D943150225317-u087m8ftadlv14u78a2un6d4hajl21hq.apps.googleusercontent.com%23\u0026app_domain=https%3A%2F%2Fservices.sheerid.com\u0026rart=ANgoxcciODTR-W-6CbKlREmHQDnq9jy6LSCjhusQrZg_hb_Fw0miYZ-oXJ89yrJWF-b5bCDUmaK2FGM6u3bxZcERcmc4z23NneBkZMK5ONYA95FUHt_b2AA",
+    "UrlDomain":  "accounts.google.com",
+    "TimeLapsed":  1,
+    "tag1":  "Internet",
+    "Tag2":  "NA"
+}
