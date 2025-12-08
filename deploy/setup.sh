@@ -329,6 +329,24 @@ create_admin() {
 }
 
 # -----------------------------------------------------------------------------
+# Seed predefined roles
+# -----------------------------------------------------------------------------
+seed_roles() {
+    print_step "Seeding predefined roles..."
+    
+    DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    cd "$DEPLOY_DIR"
+    
+    # Seed roles
+    if $COMPOSE_CMD -f $COMPOSE_FILE exec -T app node dist/seed-roles.cjs; then
+        print_success "Predefined roles seeded successfully!"
+    else
+        print_warning "Role seeding may have failed. You can run it manually later:"
+        echo "  $COMPOSE_CMD -f $COMPOSE_FILE exec app node dist/seed-roles.cjs"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Print access information
 # -----------------------------------------------------------------------------
 print_access_info() {
@@ -379,6 +397,7 @@ main() {
     start_services
     run_migration
     create_admin
+    seed_roles
     print_access_info
 }
 

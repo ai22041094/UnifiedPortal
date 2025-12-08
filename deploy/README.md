@@ -313,6 +313,30 @@ docker compose exec app node dist/create-admin.cjs
 docker compose -f docker-compose.full.yml exec app node dist/create-admin.cjs
 ```
 
+### Seed Predefined Roles
+
+Create predefined roles for each application module:
+
+```bash
+# For docker-compose.yml
+docker compose exec app node dist/seed-roles.cjs
+
+# For docker-compose.full.yml
+docker compose -f docker-compose.full.yml exec app node dist/seed-roles.cjs
+```
+
+This creates the following roles:
+- **System Administrator** - Full system access
+- **User Manager** - User and role management
+- **EPM Administrator** - Full EPM module access
+- **EPM Viewer** - Read-only EPM access
+- **ALM Administrator** - Full Asset Lifecycle Management access
+- **ALM Operator** - Asset operations and maintenance
+- **Service Desk Administrator** - Full Service Desk access
+- **Service Desk Agent** - Handle tickets and requests
+- **Portal Administrator** - Custom Portal management
+- **Portal User** - Basic portal access
+
 ## Default Credentials
 
 After running the admin creation script, log in with:

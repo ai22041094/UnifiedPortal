@@ -74,6 +74,20 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  await esbuild({
+    entryPoints: ["script/seed-roles.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/seed-roles.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+  });
 }
 
 buildAll().catch((err) => {
