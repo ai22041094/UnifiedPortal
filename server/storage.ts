@@ -8,10 +8,13 @@ import {
   type InsertApiKey,
   type InsertProcessDetails,
   type ProcessDetails,
+  type OrganizationSettings,
+  type UpdateOrganizationSettings,
   users, 
   roles,
   epmApiKeys,
-  pcvProcessDetails
+  pcvProcessDetails,
+  organizationSettings
 } from "@shared/schema";
 import { eq, and, isNull, gt, desc } from "drizzle-orm";
 import { db } from "./db";
@@ -45,6 +48,10 @@ export interface IStorage {
   createProcessDetails(data: InsertProcessDetails): Promise<void>;
   upsertProcessDetails(data: InsertProcessDetails): Promise<void>;
   getAllProcessDetails(limit?: number): Promise<ProcessDetails[]>;
+  
+  // Organization Settings methods
+  getOrganizationSettings(): Promise<OrganizationSettings | undefined>;
+  updateOrganizationSettings(data: UpdateOrganizationSettings, updatedByUserId: string): Promise<OrganizationSettings>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -198,6 +205,31 @@ export class PostgresStorage implements IStorage {
       .from(pcvProcessDetails)
       .orderBy(desc(pcvProcessDetails.eventDt))
       .limit(limit);
+  }
+
+  // Organization Settings methods
+  async getOrganizationSettings(): Promise<OrganizationSettings | undefined> {
+    const [settings] = await db.select().from(organizationSettings).limit(1);
+    return settings;
+  }
+
+  async updateOrganizationSettings(data: UpdateOrganizationSettings, updatedByUserId: string): Promise<OrganizationSettings> {
+    const existing = await this.getOrganizationSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(organizationSettings)
+        .set({ ...data, updatedAt: new Date(), updatedByUserId })
+        .where(eq(organizationSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(organizationSettings)
+        .values({ ...data, updatedByUserId } as any)
+        .returning();
+      return created;
+    }
   }
 }
 

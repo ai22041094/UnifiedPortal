@@ -180,3 +180,55 @@ export const externalProcessDetailsSchema = z.object({
 });
 
 export type ExternalProcessDetails = z.infer<typeof externalProcessDetailsSchema>;
+
+// Organization Settings table
+export const organizationSettings = pgTable("organization_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  organizationName: text("organization_name").notNull().default("pcvisor"),
+  tagline: text("tagline"),
+  website: text("website"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  postalCode: text("postal_code"),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  primaryColor: varchar("primary_color", { length: 7 }).default("#0066FF"),
+  secondaryColor: varchar("secondary_color", { length: 7 }).default("#6366F1"),
+  footerText: text("footer_text"),
+  copyrightText: text("copyright_text"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id),
+});
+
+export const insertOrganizationSettingsSchema = createInsertSchema(organizationSettings, {
+  organizationName: z.string().min(1, "Organization name is required").max(100),
+  tagline: z.string().max(200).optional().nullable(),
+  website: z.string().url("Invalid URL").optional().nullable().or(z.literal("")),
+  email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
+  phone: z.string().max(20).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  state: z.string().max(100).optional().nullable(),
+  country: z.string().max(100).optional().nullable(),
+  postalCode: z.string().max(20).optional().nullable(),
+  logoUrl: z.string().optional().nullable(),
+  faviconUrl: z.string().optional().nullable(),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format").optional().nullable(),
+  secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format").optional().nullable(),
+  footerText: z.string().max(500).optional().nullable(),
+  copyrightText: z.string().max(200).optional().nullable(),
+}).omit({
+  id: true,
+  updatedAt: true,
+  updatedByUserId: true,
+});
+
+export const updateOrganizationSettingsSchema = insertOrganizationSettingsSchema.partial();
+
+export type InsertOrganizationSettings = z.infer<typeof insertOrganizationSettingsSchema>;
+export type UpdateOrganizationSettings = z.infer<typeof updateOrganizationSettingsSchema>;
+export type OrganizationSettings = typeof organizationSettings.$inferSelect;
