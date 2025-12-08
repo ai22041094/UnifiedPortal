@@ -59,6 +59,21 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  console.log("building scripts...");
+  await esbuild({
+    entryPoints: ["script/create-admin.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/create-admin.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+  });
 }
 
 buildAll().catch((err) => {

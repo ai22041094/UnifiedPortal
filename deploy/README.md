@@ -7,10 +7,12 @@ Production-grade Docker setup for pcvisor - Unified Access Control & Enterprise 
 ```
 deploy/
 ├── Dockerfile                 # Multi-stage production Dockerfile
-├── docker-compose.yml         # Standard Docker Compose
+├── docker-compose.yml         # Standard Docker Compose (external database)
+├── docker-compose.full.yml    # Full stack with built-in PostgreSQL
 ├── docker-compose.swarm.yml   # Docker Swarm with auto-scaling
 ├── setup.sh                   # One-command bootstrap script
 ├── .env.example               # Environment variables template
+├── README.md                  # This documentation
 ├── nginx/
 │   └── default.conf           # NGINX reverse proxy config
 └── k8s/
@@ -37,7 +39,9 @@ This script will:
 - Start all services
 - Print access URLs
 
-### Option 2: Manual Setup
+### Option 2: Manual Setup (External Database)
+
+Use this when you have an external PostgreSQL database (e.g., Neon, AWS RDS, Cloud SQL):
 
 ```bash
 cd deploy
@@ -53,16 +57,37 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
+### Option 3: Full Stack (Built-in Database)
+
+Use this for fully self-contained deployment with PostgreSQL included:
+
+```bash
+cd deploy
+
+# Copy and edit environment file
+cp .env.example .env
+nano .env  # Update DB_PASSWORD and SESSION_SECRET
+
+# Build and start with full stack
+docker compose -f docker-compose.full.yml up -d --build
+
+# View logs
+docker compose -f docker-compose.full.yml logs -f
+```
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `DATABASE_URL` | Yes* | PostgreSQL connection string (for docker-compose.yml) |
+| `DB_PASSWORD` | Yes* | Database password (for docker-compose.full.yml) |
 | `SESSION_SECRET` | Yes | Secret for session encryption |
 | `REDIS_URL` | No | Redis URL (auto-configured in Docker) |
 | `NODE_ENV` | No | Environment (default: production) |
 | `PORT` | No | Application port (default: 5000) |
 | `TRUST_PROXY` | No | Set to 1 when behind proxy |
+
+*Note: Use `DATABASE_URL` with external database, or `DB_PASSWORD` with built-in PostgreSQL.
 
 ### Generate Session Secret
 
@@ -262,9 +287,35 @@ docker stats
 docker compose up -d --scale app=3
 ```
 
+## Post-Deployment Setup
+
+### Database Migration
+
+After first deployment, run the database migration to create tables:
+
+```bash
+# For docker-compose.yml (external database)
+docker compose exec app npm run db:push
+
+# For docker-compose.full.yml (built-in database)
+docker compose -f docker-compose.full.yml exec app npm run db:push
+```
+
+### Create Admin User
+
+Create the initial admin user:
+
+```bash
+# For docker-compose.yml
+docker compose exec app node dist/create-admin.cjs
+
+# For docker-compose.full.yml
+docker compose -f docker-compose.full.yml exec app node dist/create-admin.cjs
+```
+
 ## Default Credentials
 
-After deployment, log in with:
+After running the admin creation script, log in with:
 - **Username**: admin
 - **Password**: P@ssw0rd@123
 
