@@ -9,15 +9,55 @@ import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 
+const authTokens = new Map<string, { userId: string; expiresAt: Date }>();
+
+function generateAuthToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function cleanupExpiredTokens() {
+  const now = new Date();
+  const entries = Array.from(authTokens.entries());
+  for (const [token, data] of entries) {
+    if (data.expiresAt < now) {
+      authTokens.delete(token);
+    }
+  }
+}
+
+setInterval(cleanupExpiredTokens, 60000);
+
+async function restoreUserFromToken(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    const tokenData = authTokens.get(token);
+    
+    if (tokenData && tokenData.expiresAt > new Date()) {
+      const user = await storage.getUser(tokenData.userId);
+      if (user) {
+        req.user = getSafeUser(user);
+        return next();
+      }
+    }
+  }
+  
+  next();
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
+  if (!req.isAuthenticated() && !req.user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
 }
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
+  if (!req.isAuthenticated() && !req.user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   
@@ -46,6 +86,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.use(restoreUserFromToken);
+
   // Health check endpoint for Docker/K8s
   app.get("/api/health", (_req, res) => {
     res.json({ 
@@ -114,16 +156,19 @@ export async function registerRoutes(
         if (err) {
           return next(err);
         }
+        
+        const token = generateAuthToken();
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        authTokens.set(token, { userId: user.id, expiresAt });
+        
         req.session.save((saveErr) => {
           if (saveErr) {
-            return next(saveErr);
+            console.error("Session save error:", saveErr);
           }
-          console.log("Session saved, ID:", req.sessionID);
-          console.log("Session user:", req.session.passport);
           return res.json({
             message: "Login successful",
             user,
-            sessionId: req.sessionID
+            token
           });
         });
       });

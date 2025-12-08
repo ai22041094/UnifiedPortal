@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
 import type { SafeUser } from "@shared/schema";
+import { setAuthToken, clearAuthToken, getAuthToken } from "./queryClient";
 
 interface AuthContextType {
   user: SafeUser | null;
@@ -11,6 +12,14 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SafeUser | null>(null);
@@ -25,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/user", {
         credentials: "include",
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -32,10 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
       } else {
         setUser(null);
+        clearAuthToken();
       }
     } catch (error) {
       console.error("Auth check failed:", error);
       setUser(null);
+      clearAuthToken();
     } finally {
       setIsLoading(false);
     }
@@ -55,6 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+    if (data.token) {
+      setAuthToken(data.token);
+    }
     setUser(data.user);
     setLocation("/portal");
   }
@@ -73,6 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+    if (data.token) {
+      setAuthToken(data.token);
+    }
     setUser(data.user);
     setLocation("/portal");
   }
@@ -81,7 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
+      headers: getAuthHeaders(),
     });
+    clearAuthToken();
     setUser(null);
     setLocation("/");
   }
