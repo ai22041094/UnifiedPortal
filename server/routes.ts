@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import webPush from "web-push";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
@@ -1711,6 +1711,74 @@ export async function registerRoutes(
       });
       
       res.json({ message: `Deleted ${deletedCount} audit log entries`, deletedCount });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/audit-logs/stats", requireAdmin, async (_req, res, next) => {
+    try {
+      const stats = await storage.getAuditLogStats();
+      res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // SYSTEM CONFIGURATION ROUTES
+  // ============================================
+
+  app.get("/api/system-config", requireAdmin, async (_req, res, next) => {
+    try {
+      const config = await storage.getSystemConfig();
+      res.json(config || {
+        applicationName: "PCVisor",
+        timezone: "Asia/Kolkata",
+        dateFormat: "DD/MM/YYYY",
+        timeFormat: "HH:mm:ss",
+        language: "en",
+        maintenanceMode: false,
+        smtpPort: "587",
+        smtpSecure: true,
+        enableEmailNotifications: true,
+        enablePushNotifications: true,
+        enableSmsNotifications: false,
+        maxFileUploadSize: "10",
+        allowedFileTypes: "pdf,doc,docx,xls,xlsx,png,jpg,jpeg",
+        dataRetentionDays: "365",
+        enableApiAccess: true,
+        apiRateLimit: "1000",
+        enableWebhooks: false,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/system-config", requireAdmin, async (req, res, next) => {
+    try {
+      const result = updateSystemConfigSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      
+      const currentUser = req.user as SafeUser;
+      const config = await storage.updateSystemConfig(result.data, currentUser.id);
+      
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "update_system_config",
+        category: "system",
+        resourceType: "system_config",
+        details: "System configuration was updated",
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+      
+      res.json(config);
     } catch (error) {
       next(error);
     }

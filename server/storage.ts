@@ -20,6 +20,8 @@ import {
   type UpdateSecuritySettings,
   type AuditLog,
   type InsertAuditLog,
+  type SystemConfig,
+  type UpdateSystemConfig,
   users, 
   roles,
   epmApiKeys,
@@ -29,9 +31,10 @@ import {
   pushSubscriptions,
   notifications,
   securitySettings,
-  auditLogs
+  auditLogs,
+  systemConfig
 } from "@shared/schema";
-import { eq, and, isNull, gt, desc, gte, lte, or, ilike } from "drizzle-orm";
+import { eq, and, isNull, gt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
@@ -553,6 +556,130 @@ export class PostgresStorage implements IStorage {
       .update(users)
       .set({ lockedUntil: lockUntil, updatedAt: new Date() })
       .where(eq(users.id, userId));
+  }
+
+  // System Configuration methods
+  async getSystemConfig(): Promise<SystemConfig | undefined> {
+    const [config] = await db.select().from(systemConfig).limit(1);
+    return config;
+  }
+
+  async updateSystemConfig(data: UpdateSystemConfig, updatedByUserId: string): Promise<SystemConfig> {
+    const existing = await this.getSystemConfig();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(systemConfig)
+        .set({ ...data, updatedAt: new Date(), updatedByUserId })
+        .where(eq(systemConfig.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(systemConfig)
+        .values({ ...data, updatedByUserId } as any)
+        .returning();
+      return created;
+    }
+  }
+
+  // Audit Log Statistics
+  async getAuditLogStats(): Promise<{
+    total: number;
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    byCategory: { category: string; count: number }[];
+    byStatus: { status: string; count: number }[];
+    recentActivity: { date: string; count: number }[];
+  }> {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Total count
+    const totalResult = await db.select({ count: count() }).from(auditLogs);
+    const total = totalResult[0]?.count || 0;
+
+    // Today count
+    const todayResult = await db
+      .select({ count: count() })
+      .from(auditLogs)
+      .where(gte(auditLogs.createdAt, startOfToday));
+    const today = todayResult[0]?.count || 0;
+
+    // This week count
+    const weekResult = await db
+      .select({ count: count() })
+      .from(auditLogs)
+      .where(gte(auditLogs.createdAt, startOfWeek));
+    const thisWeek = weekResult[0]?.count || 0;
+
+    // This month count
+    const monthResult = await db
+      .select({ count: count() })
+      .from(auditLogs)
+      .where(gte(auditLogs.createdAt, startOfMonth));
+    const thisMonth = monthResult[0]?.count || 0;
+
+    // By category
+    const categoryResults = await db
+      .select({
+        category: auditLogs.category,
+        count: count(),
+      })
+      .from(auditLogs)
+      .groupBy(auditLogs.category);
+
+    const byCategory = categoryResults.map((r) => ({
+      category: r.category,
+      count: Number(r.count),
+    }));
+
+    // By status
+    const statusResults = await db
+      .select({
+        status: auditLogs.status,
+        count: count(),
+      })
+      .from(auditLogs)
+      .groupBy(auditLogs.status);
+
+    const byStatus = statusResults.map((r) => ({
+      status: r.status || "success",
+      count: Number(r.count),
+    }));
+
+    // Last 7 days activity
+    const last7Days: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(startOfToday);
+      date.setDate(date.getDate() - i);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const dayResult = await db
+        .select({ count: count() })
+        .from(auditLogs)
+        .where(and(gte(auditLogs.createdAt, date), lte(auditLogs.createdAt, nextDate)));
+
+      last7Days.push({
+        date: date.toISOString().split("T")[0],
+        count: dayResult[0]?.count || 0,
+      });
+    }
+
+    return {
+      total,
+      today,
+      thisWeek,
+      thisMonth,
+      byCategory,
+      byStatus,
+      recentActivity: last7Days,
+    };
   }
 }
 

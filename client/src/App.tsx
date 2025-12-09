@@ -23,6 +23,7 @@ import OrganizationSettings from "@/pages/admin/OrganizationSettings";
 import NotificationSettings from "@/pages/admin/NotificationSettings";
 import SecuritySettings from "@/pages/admin/SecuritySettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
+import SystemConfig from "@/pages/admin/SystemConfig";
 
 function Router() {
   return (
@@ -81,6 +82,11 @@ function Router() {
       <Route path="/admin/audit-logs">
         <ProtectedRoute>
           <AuditLogs />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/system-config">
+        <ProtectedRoute>
+          <SystemConfig />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">

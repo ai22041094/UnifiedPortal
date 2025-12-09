@@ -100,11 +100,11 @@ const adminMenuItems = [
     title: "System Configuration",
     description: "Configure system-wide settings",
     icon: Settings,
-    href: "#",
+    href: "/admin/system-config",
     color: "text-indigo-500",
     bgColor: "bg-indigo-500/10",
     permission: "admin.system",
-    available: false,
+    available: true,
   },
   {
     id: "database",
