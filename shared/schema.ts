@@ -461,7 +461,7 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs, {
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 
-// System Configuration table
+// System Configuration table (General settings, storage, API - email/notifications are in notification_settings)
 export const systemConfig = pgTable("system_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
   applicationName: text("application_name").default("PCVisor"),
@@ -472,16 +472,6 @@ export const systemConfig = pgTable("system_config", {
   language: varchar("language", { length: 10 }).default("en"),
   maintenanceMode: boolean("maintenance_mode").default(false),
   maintenanceMessage: text("maintenance_message"),
-  smtpHost: text("smtp_host"),
-  smtpPort: text("smtp_port").default("587"),
-  smtpUser: text("smtp_user"),
-  smtpPassword: text("smtp_password"),
-  smtpFromEmail: text("smtp_from_email"),
-  smtpFromName: text("smtp_from_name"),
-  smtpSecure: boolean("smtp_secure").default(true),
-  enableEmailNotifications: boolean("enable_email_notifications").default(true),
-  enablePushNotifications: boolean("enable_push_notifications").default(true),
-  enableSmsNotifications: boolean("enable_sms_notifications").default(false),
   maxFileUploadSize: text("max_file_upload_size").default("10"),
   allowedFileTypes: text("allowed_file_types").default("pdf,doc,docx,xls,xlsx,png,jpg,jpeg"),
   dataRetentionDays: text("data_retention_days").default("365"),
@@ -503,16 +493,6 @@ export const insertSystemConfigSchema = createInsertSchema(systemConfig, {
   language: z.enum(["en", "hi", "ja"]).default("en"),
   maintenanceMode: z.boolean().default(false),
   maintenanceMessage: z.string().optional().nullable(),
-  smtpHost: z.string().optional().nullable(),
-  smtpPort: z.string().default("587"),
-  smtpUser: z.string().optional().nullable(),
-  smtpPassword: z.string().optional().nullable(),
-  smtpFromEmail: z.string().email().optional().nullable(),
-  smtpFromName: z.string().optional().nullable(),
-  smtpSecure: z.boolean().default(true),
-  enableEmailNotifications: z.boolean().default(true),
-  enablePushNotifications: z.boolean().default(true),
-  enableSmsNotifications: z.boolean().default(false),
   maxFileUploadSize: z.string().default("10"),
   allowedFileTypes: z.string().default("pdf,doc,docx,xls,xlsx,png,jpg,jpeg"),
   dataRetentionDays: z.string().default("365"),
