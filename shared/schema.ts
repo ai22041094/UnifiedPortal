@@ -65,17 +65,17 @@ export const insertUserSchema = createInsertSchema(users, {
   designation: z.string().optional().nullable(),
   profilePhoto: z.string().optional().nullable(),
   roleId: z.string().optional().nullable(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional().default(true),
   isSystem: z.boolean().optional().default(false),
-  mfaEnabled: z.boolean().optional().default(false),
-  mfaSecret: z.string().optional().nullable(),
-  mfaVerified: z.boolean().optional().default(false),
-  failedLoginAttempts: z.string().optional().default("0"),
-  lockedUntil: z.date().optional().nullable(),
 }).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  mfaEnabled: true,
+  mfaSecret: true,
+  mfaVerified: true,
+  failedLoginAttempts: true,
+  lockedUntil: true,
 });
 
 export const updateUserSchema = insertUserSchema.partial().omit({ password: true, isSystem: true });

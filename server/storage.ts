@@ -105,6 +105,12 @@ export interface IStorage {
   }): Promise<{ logs: AuditLog[]; total: number }>;
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
   deleteOldAuditLogs(beforeDate: Date): Promise<number>;
+  
+  // MFA methods
+  updateUserMfa(userId: string, data: { mfaEnabled?: boolean; mfaSecret?: string | null; mfaVerified?: boolean }): Promise<User | undefined>;
+  incrementFailedLoginAttempts(userId: string): Promise<number>;
+  resetFailedLoginAttempts(userId: string): Promise<void>;
+  lockUserAccount(userId: string, lockUntil: Date): Promise<void>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -508,6 +514,45 @@ export class PostgresStorage implements IStorage {
       .where(lte(auditLogs.createdAt, beforeDate))
       .returning();
     return result.length;
+  }
+
+  // MFA methods
+  async updateUserMfa(userId: string, data: { mfaEnabled?: boolean; mfaSecret?: string | null; mfaVerified?: boolean }): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async incrementFailedLoginAttempts(userId: string): Promise<number> {
+    const user = await this.getUser(userId);
+    if (!user) return 0;
+    
+    const currentAttempts = parseInt(user.failedLoginAttempts || "0", 10);
+    const newAttempts = currentAttempts + 1;
+    
+    await db
+      .update(users)
+      .set({ failedLoginAttempts: newAttempts.toString(), updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    
+    return newAttempts;
+  }
+
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ failedLoginAttempts: "0", lockedUntil: null, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async lockUserAccount(userId: string, lockUntil: Date): Promise<void> {
+    await db
+      .update(users)
+      .set({ lockedUntil: lockUntil, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 }
 

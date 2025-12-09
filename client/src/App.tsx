@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
 import Profile from "@/pages/Profile";
 import ChangePasswordPage from "@/pages/ChangePassword";
+import MfaSetup from "@/pages/MfaSetup";
 import AdminConsole from "@/pages/AdminConsole";
 import CustomPortal from "@/pages/apps/CustomPortal";
 import AssetManagement from "@/pages/apps/AssetManagement";
@@ -40,6 +41,11 @@ function Router() {
       <Route path="/change-password">
         <ProtectedRoute>
           <ChangePasswordPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/mfa-setup">
+        <ProtectedRoute>
+          <MfaSetup />
         </ProtectedRoute>
       </Route>
       <Route path="/admin-console">

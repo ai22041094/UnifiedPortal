@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
 import webPush from "web-push";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
@@ -12,6 +12,36 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { authenticator } from "otplib";
+import QRCode from "qrcode";
+
+async function validatePasswordPolicy(password: string): Promise<{ valid: boolean; errors: string[] }> {
+  const settings = await storage.getSecuritySettings();
+  const errors: string[] = [];
+  
+  const minLength = parseInt(settings?.minPasswordLength || "8", 10);
+  if (password.length < minLength) {
+    errors.push(`Password must be at least ${minLength} characters long`);
+  }
+  
+  if (settings?.requireUppercase !== false && !/[A-Z]/.test(password)) {
+    errors.push("Password must contain at least one uppercase letter");
+  }
+  
+  if (settings?.requireLowercase !== false && !/[a-z]/.test(password)) {
+    errors.push("Password must contain at least one lowercase letter");
+  }
+  
+  if (settings?.requireNumbers !== false && !/[0-9]/.test(password)) {
+    errors.push("Password must contain at least one number");
+  }
+  
+  if (settings?.requireSpecialChars !== false && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push("Password must contain at least one special character");
+  }
+  
+  return { valid: errors.length === 0, errors };
+}
 
 const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -143,6 +173,12 @@ export async function registerRoutes(
 
       const { username, password, email, fullName, roleId } = result.data;
 
+      // Validate password against security policy
+      const passwordValidation = await validatePasswordPolicy(password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ message: passwordValidation.errors.join(". ") });
+      }
+
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
@@ -173,17 +209,52 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: SafeUser | false, info: any) => {
+  app.post("/api/auth/login", async (req, res, next) => {
+    const { username } = req.body;
+    
+    passport.authenticate("local", async (err: any, user: SafeUser | false, info: any) => {
       if (err) {
         return next(err);
       }
 
       if (!user) {
+        // Track failed login attempts for password failures
+        if (username) {
+          const existingUser = await storage.getUserByUsername(username);
+          if (existingUser && info?.message !== "Account is temporarily locked") {
+            const securitySettings = await storage.getSecuritySettings();
+            const maxAttempts = parseInt(securitySettings?.maxLoginAttempts || "5", 10);
+            const lockoutMinutes = parseInt(securitySettings?.lockoutDurationMinutes || "30", 10);
+            
+            const failedAttempts = await storage.incrementFailedLoginAttempts(existingUser.id);
+            
+            if (failedAttempts >= maxAttempts) {
+              const lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+              await storage.lockUserAccount(existingUser.id, lockUntil);
+              return res.status(401).json({
+                message: `Account locked due to too many failed attempts. Try again in ${lockoutMinutes} minutes.`
+              });
+            }
+          }
+        }
+        
         return res.status(401).json({
           message: info?.message || "Invalid username or password"
         });
       }
+
+      // Check if user has MFA enabled and verified
+      const fullUser = await storage.getUser(user.id);
+      if (fullUser && fullUser.mfaEnabled && fullUser.mfaVerified) {
+        // MFA is required - don't create session yet
+        return res.json({
+          requiresMfa: true,
+          userId: user.id
+        });
+      }
+
+      // Reset failed login attempts on successful login
+      await storage.resetFailedLoginAttempts(user.id);
 
       req.login(user, (err) => {
         if (err) {
@@ -251,6 +322,244 @@ export async function registerRoutes(
     }
   });
 
+  // MFA Routes
+  app.post("/api/auth/mfa/setup", requireAuth, async (req, res, next) => {
+    try {
+      const result = mfaSetupSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(result.data.password, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "Invalid password" });
+      }
+
+      // Generate TOTP secret
+      const secret = authenticator.generateSecret();
+      const otpauthUrl = authenticator.keyuri(user.username, "pcvisor", secret);
+
+      // Generate QR code as data URL
+      const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+      // Store the secret (but keep mfaVerified false until verified)
+      await storage.updateUserMfa(user.id, {
+        mfaSecret: secret,
+        mfaVerified: false
+      });
+
+      res.json({
+        secret,
+        qrCode,
+        otpauthUrl
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/auth/mfa/verify-setup", requireAuth, async (req, res, next) => {
+    try {
+      const result = mfaVerifySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.mfaSecret) {
+        return res.status(400).json({ message: "MFA setup not initiated. Please start MFA setup first." });
+      }
+
+      // Verify the TOTP code
+      const isValid = authenticator.verify({
+        token: result.data.code,
+        secret: user.mfaSecret
+      });
+
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+
+      // Enable MFA
+      await storage.updateUserMfa(user.id, {
+        mfaEnabled: true,
+        mfaVerified: true
+      });
+
+      // Create audit log entry
+      await storage.createAuditLog({
+        userId: user.id,
+        username: user.username,
+        action: "MFA Enabled",
+        category: "security",
+        resourceType: "user",
+        resourceId: user.id,
+        resourceName: user.username,
+        details: "Two-factor authentication enabled",
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success"
+      });
+
+      res.json({ message: "MFA enabled successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/auth/mfa/disable", requireAuth, async (req, res, next) => {
+    try {
+      const result = mfaSetupSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(result.data.password, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "Invalid password" });
+      }
+
+      // Disable MFA
+      await storage.updateUserMfa(user.id, {
+        mfaEnabled: false,
+        mfaSecret: null,
+        mfaVerified: false
+      });
+
+      // Create audit log entry
+      await storage.createAuditLog({
+        userId: user.id,
+        username: user.username,
+        action: "MFA Disabled",
+        category: "security",
+        resourceType: "user",
+        resourceId: user.id,
+        resourceName: user.username,
+        details: "Two-factor authentication disabled",
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success"
+      });
+
+      res.json({ message: "MFA disabled successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/auth/mfa/verify", async (req, res, next) => {
+    try {
+      const result = mfaLoginVerifySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const { userId, code } = result.data;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.mfaSecret || !user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is not enabled for this user" });
+      }
+
+      // Verify the TOTP code
+      const isValid = authenticator.verify({
+        token: code,
+        secret: user.mfaSecret
+      });
+
+      if (!isValid) {
+        // Increment failed attempts
+        const securitySettings = await storage.getSecuritySettings();
+        const maxAttempts = parseInt(securitySettings?.maxLoginAttempts || "5", 10);
+        const lockoutMinutes = parseInt(securitySettings?.lockoutDurationMinutes || "30", 10);
+        
+        const attempts = await storage.incrementFailedLoginAttempts(userId);
+        if (attempts >= maxAttempts) {
+          const lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+          await storage.lockUserAccount(userId, lockUntil);
+          return res.status(401).json({ message: `Account locked due to too many failed attempts. Try again in ${lockoutMinutes} minutes.` });
+        }
+        return res.status(401).json({ message: "Invalid verification code" });
+      }
+
+      // Reset failed login attempts
+      await storage.resetFailedLoginAttempts(userId);
+
+      const safeUser = getSafeUser(user);
+
+      // Create session and log user in
+      req.login(safeUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        const token = generateAuthToken();
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        authTokens.set(token, { userId: user.id, expiresAt });
+        
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+          return res.json({
+            message: "Login successful",
+            user: safeUser,
+            token
+          });
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/auth/mfa/status", requireAuth, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const user = await storage.getUser(currentUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        enabled: user.mfaEnabled || false,
+        verified: user.mfaVerified || false
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Profile routes - for the currently logged in user
   app.get("/api/profile", requireAuth, async (req, res, next) => {
     try {
@@ -310,6 +619,12 @@ export async function registerRoutes(
       const isValidPassword = await bcrypt.compare(result.data.currentPassword, user.password);
       if (!isValidPassword) {
         return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Validate new password against security policy
+      const passwordValidation = await validatePasswordPolicy(result.data.newPassword);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ message: passwordValidation.errors.join(". ") });
       }
 
       // Hash new password and update
@@ -539,7 +854,7 @@ export async function registerRoutes(
   app.patch("/api/users/:id/password", requireAdmin, async (req, res, next) => {
     try {
       const schema = z.object({
-        password: z.string().min(6, "Password must be at least 6 characters"),
+        password: z.string().min(1, "Password is required"),
       });
       
       const result = schema.safeParse(req.body);
@@ -547,6 +862,12 @@ export async function registerRoutes(
         return res.status(400).json({
           message: fromError(result.error).toString()
         });
+      }
+
+      // Validate password against security policy
+      const passwordValidation = await validatePasswordPolicy(result.data.password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ message: passwordValidation.errors.join(". ") });
       }
 
       const hashedPassword = await hashPassword(result.data.password);

@@ -190,6 +190,37 @@ The ALM module features 6 comprehensive dashboards with KPI cards and metrics:
 - **passport-local** - Local username/password strategy
 - **bcrypt** - Password hashing
 - **express-session** - Session management
+- **otplib** - TOTP (Time-based One-Time Password) generation for MFA
+- **qrcode** - QR code generation for authenticator app setup
+
+### Multi-Factor Authentication (MFA)
+
+**TOTP Implementation**
+- Users can enable MFA in their account settings
+- Uses TOTP (Time-based One-Time Password) compatible with authenticator apps (Google Authenticator, Authy, etc.)
+- MFA setup generates a QR code that users scan with their authenticator app
+- Setup requires immediate verification with a valid code before enabling
+
+**MFA Endpoints**
+- `GET /api/auth/mfa/status` - Check if MFA is enabled for current user
+- `POST /api/auth/mfa/setup` - Generate new MFA secret and QR code
+- `POST /api/auth/mfa/verify-setup` - Verify code and enable MFA
+- `POST /api/auth/mfa/disable` - Disable MFA (requires valid code)
+- `POST /api/auth/mfa/verify` - Verify MFA code during login
+
+**Security Features**
+- Failed login attempts tracked for both password and MFA failures
+- Account lockout after configurable number of failed attempts (default: 5)
+- Lockout duration configurable via security settings (default: 30 minutes)
+- Password policy enforcement with configurable requirements (min length, uppercase, lowercase, numbers, special characters)
+- MFA secret excluded from SafeUser type to prevent exposure
+
+**Login Flow with MFA**
+1. User submits username/password
+2. If credentials valid and MFA enabled, server returns `{ requiresMfa: true, userId }`
+3. Frontend shows MFA code input
+4. User enters code from authenticator app
+5. If valid, session created and user logged in
 
 **Development Tools**
 - **Vite** plugins:

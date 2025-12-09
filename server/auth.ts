@@ -19,7 +19,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 }
 
 export function getSafeUser(user: User): SafeUser {
-  const { password, ...safeUser } = user;
+  const { password, mfaSecret, ...safeUser } = user;
   return safeUser;
 }
 
@@ -85,6 +85,11 @@ export function setupAuth(app: Express) {
         const user = await storage.getUserByUsername(username);
         if (!user) {
           return done(null, false, { message: "Invalid username or password" });
+        }
+
+        // Check if account is locked
+        if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+          return done(null, false, { message: "Account is temporarily locked" });
         }
 
         const isValid = await comparePassword(password, user.password);
