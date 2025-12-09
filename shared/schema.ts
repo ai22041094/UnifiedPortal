@@ -28,6 +28,11 @@ export const users = pgTable("users", {
   roleId: varchar("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
   isSystem: boolean("is_system").default(false),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaSecret: text("mfa_secret"),
+  mfaVerified: boolean("mfa_verified").default(false),
+  failedLoginAttempts: text("failed_login_attempts").default("0"),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -62,6 +67,11 @@ export const insertUserSchema = createInsertSchema(users, {
   roleId: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
   isSystem: z.boolean().optional().default(false),
+  mfaEnabled: z.boolean().optional().default(false),
+  mfaSecret: z.string().optional().nullable(),
+  mfaVerified: z.boolean().optional().default(false),
+  failedLoginAttempts: z.string().optional().default("0"),
+  lockedUntil: z.date().optional().nullable(),
 }).omit({
   id: true,
   createdAt: true,
@@ -81,6 +91,24 @@ export const changePasswordSchema = z.object({
 
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 
+// MFA schemas
+export const mfaSetupSchema = z.object({
+  password: z.string().min(1, "Password is required to setup MFA"),
+});
+
+export const mfaVerifySchema = z.object({
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export const mfaLoginVerifySchema = z.object({
+  userId: z.string(),
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export type MfaSetup = z.infer<typeof mfaSetupSchema>;
+export type MfaVerify = z.infer<typeof mfaVerifySchema>;
+export type MfaLoginVerify = z.infer<typeof mfaLoginVerifySchema>;
+
 export const selectUserSchema = createSelectSchema(users).omit({
   password: true,
 });
@@ -88,7 +116,7 @@ export const selectUserSchema = createSelectSchema(users).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
-export type SafeUser = Omit<User, 'password'>;
+export type SafeUser = Omit<User, 'password' | 'mfaSecret'>;
 
 // EPM Module - Process Details table
 export const pcvProcessDetails = pgTable("pcv_process_details", {
