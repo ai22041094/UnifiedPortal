@@ -22,6 +22,16 @@ import {
   type InsertAuditLog,
   type SystemConfig,
   type UpdateSystemConfig,
+  type DatabaseBackup,
+  type InsertDatabaseBackup,
+  type UpdateDatabaseBackup,
+  type BackupSchedule,
+  type InsertBackupSchedule,
+  type UpdateBackupSchedule,
+  type QueryExecutionLog,
+  type InsertQueryExecutionLog,
+  type DatabaseSettings,
+  type UpdateDatabaseSettings,
   users, 
   roles,
   epmApiKeys,
@@ -32,7 +42,11 @@ import {
   notifications,
   securitySettings,
   auditLogs,
-  systemConfig
+  systemConfig,
+  databaseBackups,
+  backupSchedules,
+  queryExecutionLogs,
+  databaseSettings
 } from "@shared/schema";
 import { eq, and, isNull, gt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { db } from "./db";
@@ -114,6 +128,29 @@ export interface IStorage {
   incrementFailedLoginAttempts(userId: string): Promise<number>;
   resetFailedLoginAttempts(userId: string): Promise<void>;
   lockUserAccount(userId: string, lockUntil: Date): Promise<void>;
+  
+  // Database Backup methods
+  getDatabaseBackup(id: string): Promise<DatabaseBackup | undefined>;
+  getAllDatabaseBackups(limit?: number): Promise<DatabaseBackup[]>;
+  createDatabaseBackup(data: InsertDatabaseBackup): Promise<DatabaseBackup>;
+  updateDatabaseBackup(id: string, data: UpdateDatabaseBackup): Promise<DatabaseBackup | undefined>;
+  deleteDatabaseBackup(id: string): Promise<boolean>;
+  
+  // Backup Schedule methods
+  getBackupSchedule(id: string): Promise<BackupSchedule | undefined>;
+  getAllBackupSchedules(): Promise<BackupSchedule[]>;
+  getActiveBackupSchedules(): Promise<BackupSchedule[]>;
+  createBackupSchedule(data: InsertBackupSchedule): Promise<BackupSchedule>;
+  updateBackupSchedule(id: string, data: UpdateBackupSchedule): Promise<BackupSchedule | undefined>;
+  deleteBackupSchedule(id: string): Promise<boolean>;
+  
+  // Query Execution Log methods
+  getQueryExecutionLogs(limit?: number): Promise<QueryExecutionLog[]>;
+  createQueryExecutionLog(data: InsertQueryExecutionLog): Promise<QueryExecutionLog>;
+  
+  // Database Settings methods
+  getDatabaseSettings(): Promise<DatabaseSettings | undefined>;
+  updateDatabaseSettings(data: UpdateDatabaseSettings, updatedByUserId: string): Promise<DatabaseSettings>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -680,6 +717,103 @@ export class PostgresStorage implements IStorage {
       byStatus,
       recentActivity: last7Days,
     };
+  }
+
+  // Database Backup methods
+  async getDatabaseBackup(id: string): Promise<DatabaseBackup | undefined> {
+    const [backup] = await db.select().from(databaseBackups).where(eq(databaseBackups.id, id)).limit(1);
+    return backup;
+  }
+
+  async getAllDatabaseBackups(limit: number = 50): Promise<DatabaseBackup[]> {
+    return db.select().from(databaseBackups).orderBy(desc(databaseBackups.requestedAt)).limit(limit);
+  }
+
+  async createDatabaseBackup(data: InsertDatabaseBackup): Promise<DatabaseBackup> {
+    const [backup] = await db.insert(databaseBackups).values(data).returning();
+    return backup;
+  }
+
+  async updateDatabaseBackup(id: string, data: UpdateDatabaseBackup): Promise<DatabaseBackup | undefined> {
+    const [backup] = await db
+      .update(databaseBackups)
+      .set(data)
+      .where(eq(databaseBackups.id, id))
+      .returning();
+    return backup;
+  }
+
+  async deleteDatabaseBackup(id: string): Promise<boolean> {
+    const result = await db.delete(databaseBackups).where(eq(databaseBackups.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Backup Schedule methods
+  async getBackupSchedule(id: string): Promise<BackupSchedule | undefined> {
+    const [schedule] = await db.select().from(backupSchedules).where(eq(backupSchedules.id, id)).limit(1);
+    return schedule;
+  }
+
+  async getAllBackupSchedules(): Promise<BackupSchedule[]> {
+    return db.select().from(backupSchedules).orderBy(desc(backupSchedules.createdAt));
+  }
+
+  async getActiveBackupSchedules(): Promise<BackupSchedule[]> {
+    return db.select().from(backupSchedules).where(eq(backupSchedules.isActive, true));
+  }
+
+  async createBackupSchedule(data: InsertBackupSchedule): Promise<BackupSchedule> {
+    const [schedule] = await db.insert(backupSchedules).values(data).returning();
+    return schedule;
+  }
+
+  async updateBackupSchedule(id: string, data: UpdateBackupSchedule): Promise<BackupSchedule | undefined> {
+    const [schedule] = await db
+      .update(backupSchedules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(backupSchedules.id, id))
+      .returning();
+    return schedule;
+  }
+
+  async deleteBackupSchedule(id: string): Promise<boolean> {
+    const result = await db.delete(backupSchedules).where(eq(backupSchedules.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Query Execution Log methods
+  async getQueryExecutionLogs(limit: number = 100): Promise<QueryExecutionLog[]> {
+    return db.select().from(queryExecutionLogs).orderBy(desc(queryExecutionLogs.executedAt)).limit(limit);
+  }
+
+  async createQueryExecutionLog(data: InsertQueryExecutionLog): Promise<QueryExecutionLog> {
+    const [log] = await db.insert(queryExecutionLogs).values(data).returning();
+    return log;
+  }
+
+  // Database Settings methods
+  async getDatabaseSettings(): Promise<DatabaseSettings | undefined> {
+    const [settings] = await db.select().from(databaseSettings).limit(1);
+    return settings;
+  }
+
+  async updateDatabaseSettings(data: UpdateDatabaseSettings, updatedByUserId: string): Promise<DatabaseSettings> {
+    const existing = await this.getDatabaseSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(databaseSettings)
+        .set({ ...data, updatedAt: new Date(), updatedByUserId })
+        .where(eq(databaseSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(databaseSettings)
+        .values({ ...data, updatedByUserId } as any)
+        .returning();
+      return created;
+    }
   }
 }
 

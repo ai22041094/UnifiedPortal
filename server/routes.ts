@@ -1779,5 +1779,420 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // DATABASE MANAGEMENT ROUTES
+  // ============================================
+
+  // Database Backups
+  app.get("/api/db/backups", requireAdmin, async (_req, res, next) => {
+    try {
+      const backups = await storage.getAllDatabaseBackups();
+      res.json(backups);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/db/backups", requireAdmin, async (req, res, next) => {
+    try {
+      const currentUser = req.user as SafeUser;
+      const { createBackup } = await import("./services/backupService");
+      
+      const result = await createBackup(currentUser.id);
+      
+      if (result.success) {
+        res.json({ message: "Backup created successfully", ...result });
+      } else {
+        res.status(500).json({ message: "Backup failed", error: result.error });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/db/backups/:id/download", requireAdmin, async (req, res, next) => {
+    try {
+      const backup = await storage.getDatabaseBackup(req.params.id);
+      if (!backup) {
+        return res.status(404).json({ message: "Backup not found" });
+      }
+
+      if (!backup.filePath) {
+        return res.status(404).json({ message: "Backup file not available" });
+      }
+
+      const { getBackupFileContent } = await import("./services/backupService");
+      const content = await getBackupFileContent(backup.filePath);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Backup file not found on disk" });
+      }
+
+      const filename = backup.filePath.split("/").pop() || "backup.sql";
+      res.setHeader("Content-Type", "application/sql");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(content);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/db/backups/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const backup = await storage.getDatabaseBackup(req.params.id);
+      if (!backup) {
+        return res.status(404).json({ message: "Backup not found" });
+      }
+
+      if (backup.filePath) {
+        const { deleteBackupFile } = await import("./services/backupService");
+        await deleteBackupFile(backup.filePath);
+      }
+
+      await storage.deleteDatabaseBackup(req.params.id);
+      
+      const currentUser = req.user as SafeUser;
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "delete_backup",
+        category: "system",
+        resourceType: "backup",
+        resourceId: req.params.id,
+        details: `Deleted backup: ${backup.name}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+
+      res.json({ message: "Backup deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Backup Schedules
+  app.get("/api/db/schedules", requireAdmin, async (_req, res, next) => {
+    try {
+      const schedules = await storage.getAllBackupSchedules();
+      res.json(schedules);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/db/schedules", requireAdmin, async (req, res, next) => {
+    try {
+      const { insertBackupScheduleSchema } = await import("@shared/schema");
+      const result = insertBackupScheduleSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const { calculateNextRun, scheduleBackupJob } = await import("./services/backupService");
+      
+      const schedule = await storage.createBackupSchedule({
+        ...result.data,
+        createdByUserId: currentUser.id,
+      });
+
+      await storage.updateBackupSchedule(schedule.id, {
+        nextRunAt: calculateNextRun(schedule.cronExpression),
+      });
+
+      const updatedSchedule = await storage.getBackupSchedule(schedule.id);
+      if (updatedSchedule) {
+        scheduleBackupJob(updatedSchedule);
+      }
+
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "create_backup_schedule",
+        category: "system",
+        resourceType: "backup_schedule",
+        resourceId: schedule.id,
+        resourceName: schedule.name,
+        details: `Created backup schedule: ${schedule.name}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+
+      res.json(updatedSchedule);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/db/schedules/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const { updateBackupScheduleSchema } = await import("@shared/schema");
+      const result = updateBackupScheduleSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+
+      const { calculateNextRun, scheduleBackupJob, cancelScheduledJob } = await import("./services/backupService");
+      
+      const existingSchedule = await storage.getBackupSchedule(req.params.id);
+      if (!existingSchedule) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+
+      cancelScheduledJob(req.params.id);
+
+      const updateData: any = { ...result.data };
+      if (result.data.cronExpression) {
+        updateData.nextRunAt = calculateNextRun(result.data.cronExpression);
+      }
+
+      const schedule = await storage.updateBackupSchedule(req.params.id, updateData);
+      
+      if (schedule && schedule.isActive) {
+        scheduleBackupJob(schedule);
+      }
+
+      const currentUser = req.user as SafeUser;
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "update_backup_schedule",
+        category: "system",
+        resourceType: "backup_schedule",
+        resourceId: req.params.id,
+        details: `Updated backup schedule: ${schedule?.name}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+
+      res.json(schedule);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/db/schedules/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const schedule = await storage.getBackupSchedule(req.params.id);
+      if (!schedule) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+
+      const { cancelScheduledJob } = await import("./services/backupService");
+      cancelScheduledJob(req.params.id);
+
+      await storage.deleteBackupSchedule(req.params.id);
+
+      const currentUser = req.user as SafeUser;
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "delete_backup_schedule",
+        category: "system",
+        resourceType: "backup_schedule",
+        resourceId: req.params.id,
+        resourceName: schedule.name,
+        details: `Deleted backup schedule: ${schedule.name}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+
+      res.json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Query Execution
+  app.get("/api/db/query-logs", requireAdmin, async (_req, res, next) => {
+    try {
+      const logs = await storage.getQueryExecutionLogs();
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/db/query", requireAdmin, async (req, res, next) => {
+    try {
+      const { query, confirmDelete } = req.body;
+      
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      const trimmedQuery = query.trim().toUpperCase();
+      let queryType: "SELECT" | "INSERT" | "UPDATE" | "DELETE" = "SELECT";
+      
+      if (trimmedQuery.startsWith("INSERT")) {
+        queryType = "INSERT";
+      } else if (trimmedQuery.startsWith("UPDATE")) {
+        queryType = "UPDATE";
+      } else if (trimmedQuery.startsWith("DELETE")) {
+        queryType = "DELETE";
+        if (confirmDelete !== "delete") {
+          return res.status(400).json({ 
+            message: "DELETE queries require confirmation. Please type 'delete' to confirm.",
+            requiresConfirmation: true,
+            queryType: "DELETE"
+          });
+        }
+      } else if (trimmedQuery.startsWith("SELECT")) {
+        queryType = "SELECT";
+      } else if (trimmedQuery.startsWith("DROP") || trimmedQuery.startsWith("TRUNCATE") || trimmedQuery.startsWith("ALTER")) {
+        return res.status(403).json({ message: "DROP, TRUNCATE, and ALTER statements are not allowed" });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const startTime = Date.now();
+
+      try {
+        const { db } = await import("./db");
+        const { sql } = await import("drizzle-orm");
+        
+        const result = await db.execute(sql.raw(query));
+        const executionTime = `${Date.now() - startTime}ms`;
+        const rowsAffected = Array.isArray(result) ? result.length.toString() : "0";
+
+        await storage.createQueryExecutionLog({
+          query,
+          queryType,
+          status: "success",
+          rowsAffected,
+          executionTime,
+          executedByUserId: currentUser.id,
+          executedByUsername: currentUser.username,
+        });
+
+        await storage.createAuditLog({
+          userId: currentUser.id,
+          username: currentUser.username,
+          action: "execute_query",
+          category: "data",
+          resourceType: "database",
+          details: `Executed ${queryType} query. Rows affected: ${rowsAffected}`,
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          status: "success",
+        });
+
+        res.json({
+          success: true,
+          result: Array.isArray(result) ? result : [],
+          rowsAffected,
+          executionTime,
+          queryType,
+        });
+      } catch (queryError: any) {
+        const executionTime = `${Date.now() - startTime}ms`;
+        
+        await storage.createQueryExecutionLog({
+          query,
+          queryType,
+          status: "failed",
+          executionTime,
+          errorMessage: queryError.message,
+          executedByUserId: currentUser.id,
+          executedByUsername: currentUser.username,
+        });
+
+        await storage.createAuditLog({
+          userId: currentUser.id,
+          username: currentUser.username,
+          action: "execute_query",
+          category: "data",
+          resourceType: "database",
+          details: `Query failed: ${queryError.message}`,
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          status: "failure",
+        });
+
+        res.status(400).json({
+          success: false,
+          error: queryError.message,
+          queryType,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Database Settings
+  app.get("/api/db/settings", requireAdmin, async (_req, res, next) => {
+    try {
+      const settings = await storage.getDatabaseSettings();
+      res.json(settings || {
+        timezone: "UTC",
+        backupRetentionDays: "30",
+        maxQueryExecutionTime: "30",
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/db/settings", requireAdmin, async (req, res, next) => {
+    try {
+      const { updateDatabaseSettingsSchema } = await import("@shared/schema");
+      const result = updateDatabaseSettingsSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+
+      const currentUser = req.user as SafeUser;
+      const settings = await storage.updateDatabaseSettings(result.data, currentUser.id);
+
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        username: currentUser.username,
+        action: "update_database_settings",
+        category: "system",
+        resourceType: "database_settings",
+        details: "Database settings were updated",
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+
+      res.json(settings);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get list of available timezones
+  app.get("/api/db/timezones", requireAdmin, async (_req, res) => {
+    const timezones = [
+      "UTC",
+      "America/New_York",
+      "America/Chicago",
+      "America/Denver",
+      "America/Los_Angeles",
+      "America/Toronto",
+      "America/Vancouver",
+      "America/Sao_Paulo",
+      "Europe/London",
+      "Europe/Paris",
+      "Europe/Berlin",
+      "Europe/Moscow",
+      "Asia/Dubai",
+      "Asia/Kolkata",
+      "Asia/Singapore",
+      "Asia/Tokyo",
+      "Asia/Shanghai",
+      "Asia/Hong_Kong",
+      "Australia/Sydney",
+      "Australia/Melbourne",
+      "Pacific/Auckland",
+    ];
+    res.json(timezones);
+  });
+
   return httpServer;
 }

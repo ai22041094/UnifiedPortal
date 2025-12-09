@@ -512,3 +512,137 @@ export const updateSystemConfigSchema = insertSystemConfigSchema.partial();
 export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
 export type UpdateSystemConfig = z.infer<typeof updateSystemConfigSchema>;
 export type SystemConfig = typeof systemConfig.$inferSelect;
+
+// Database Backups table
+export const databaseBackups = pgTable("database_backups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  name: text("name").notNull(),
+  type: varchar("type", { length: 20 }).notNull().default("manual"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  filePath: text("file_path"),
+  fileSize: text("file_size"),
+  checksum: text("checksum"),
+  errorMessage: text("error_message"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  scheduleId: varchar("schedule_id"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const insertDatabaseBackupSchema = createInsertSchema(databaseBackups, {
+  name: z.string().min(1, "Name is required").max(200),
+  type: z.enum(["manual", "scheduled"]).default("manual"),
+  status: z.enum(["pending", "in_progress", "completed", "failed"]).default("pending"),
+  filePath: z.string().optional().nullable(),
+  fileSize: z.string().optional().nullable(),
+  checksum: z.string().optional().nullable(),
+  errorMessage: z.string().optional().nullable(),
+  createdByUserId: z.string().optional().nullable(),
+  scheduleId: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  requestedAt: true,
+  completedAt: true,
+});
+
+export const updateDatabaseBackupSchema = insertDatabaseBackupSchema.partial();
+
+export type InsertDatabaseBackup = z.infer<typeof insertDatabaseBackupSchema>;
+export type UpdateDatabaseBackup = z.infer<typeof updateDatabaseBackupSchema>;
+export type DatabaseBackup = typeof databaseBackups.$inferSelect;
+
+// Backup Schedules table
+export const backupSchedules = pgTable("backup_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  name: text("name").notNull(),
+  cronExpression: varchar("cron_expression", { length: 100 }).notNull(),
+  timezone: varchar("timezone", { length: 50 }).default("UTC"),
+  retentionDays: text("retention_days").default("30"),
+  isActive: boolean("is_active").default(true),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertBackupScheduleSchema = createInsertSchema(backupSchedules, {
+  name: z.string().min(1, "Name is required").max(100),
+  cronExpression: z.string().min(1, "Cron expression is required").max(100),
+  timezone: z.string().max(50).default("UTC"),
+  retentionDays: z.string().default("30"),
+  isActive: z.boolean().default(true),
+  createdByUserId: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  lastRunAt: true,
+  nextRunAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateBackupScheduleSchema = insertBackupScheduleSchema.partial().extend({
+  lastRunAt: z.date().optional().nullable(),
+  nextRunAt: z.date().optional().nullable(),
+});
+
+export type InsertBackupSchedule = z.infer<typeof insertBackupScheduleSchema>;
+export type UpdateBackupSchedule = z.infer<typeof updateBackupScheduleSchema>;
+export type BackupSchedule = typeof backupSchedules.$inferSelect;
+
+// Query Execution Logs table
+export const queryExecutionLogs = pgTable("query_execution_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  query: text("query").notNull(),
+  queryType: varchar("query_type", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  rowsAffected: text("rows_affected"),
+  executionTime: text("execution_time"),
+  errorMessage: text("error_message"),
+  executedByUserId: varchar("executed_by_user_id").references(() => users.id),
+  executedByUsername: text("executed_by_username"),
+  executedAt: timestamp("executed_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertQueryExecutionLogSchema = createInsertSchema(queryExecutionLogs, {
+  query: z.string().min(1, "Query is required"),
+  queryType: z.enum(["SELECT", "INSERT", "UPDATE", "DELETE"]),
+  status: z.enum(["pending", "success", "failed"]).default("pending"),
+  rowsAffected: z.string().optional().nullable(),
+  executionTime: z.string().optional().nullable(),
+  errorMessage: z.string().optional().nullable(),
+  executedByUserId: z.string().optional().nullable(),
+  executedByUsername: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  executedAt: true,
+});
+
+export type InsertQueryExecutionLog = z.infer<typeof insertQueryExecutionLogSchema>;
+export type QueryExecutionLog = typeof queryExecutionLogs.$inferSelect;
+
+// Database Settings table (for timezone and other DB-related settings)
+export const databaseSettings = pgTable("database_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  timezone: varchar("timezone", { length: 50 }).default("UTC"),
+  backupRetentionDays: text("backup_retention_days").default("30"),
+  maxQueryExecutionTime: text("max_query_execution_time").default("30"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id),
+});
+
+export const insertDatabaseSettingsSchema = createInsertSchema(databaseSettings, {
+  timezone: z.string().max(50).default("UTC"),
+  backupRetentionDays: z.string().default("30"),
+  maxQueryExecutionTime: z.string().default("30"),
+}).omit({
+  id: true,
+  updatedAt: true,
+  updatedByUserId: true,
+});
+
+export const updateDatabaseSettingsSchema = insertDatabaseSettingsSchema.partial();
+
+export type InsertDatabaseSettings = z.infer<typeof insertDatabaseSettingsSchema>;
+export type UpdateDatabaseSettings = z.infer<typeof updateDatabaseSettingsSchema>;
+export type DatabaseSettings = typeof databaseSettings.$inferSelect;
