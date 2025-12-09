@@ -12,6 +12,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
@@ -2192,6 +2193,130 @@ export async function registerRoutes(
       "Pacific/Auckland",
     ];
     res.json(timezones);
+  });
+
+  // System Monitoring Routes
+  app.get("/api/admin/system/metrics", requireAuth, requireAdmin, async (_req, res, next) => {
+    try {
+      const cpus = os.cpus();
+      const cpuCount = cpus.length;
+      
+      let totalIdle = 0;
+      let totalTick = 0;
+      for (const cpu of cpus) {
+        for (const type in cpu.times) {
+          totalTick += cpu.times[type as keyof typeof cpu.times];
+        }
+        totalIdle += cpu.times.idle;
+      }
+      const cpuUsage = Math.round((1 - totalIdle / totalTick) * 100);
+      
+      const totalMemory = os.totalmem();
+      const freeMemory = os.freemem();
+      const usedMemory = totalMemory - freeMemory;
+      const memoryUsagePercent = Math.round((usedMemory / totalMemory) * 100);
+      
+      let diskInfo = { total: 0, used: 0, free: 0, percent: 0 };
+      try {
+        const stats = fs.statfsSync('/');
+        diskInfo.total = stats.blocks * stats.bsize;
+        diskInfo.free = stats.bfree * stats.bsize;
+        diskInfo.used = diskInfo.total - diskInfo.free;
+        diskInfo.percent = Math.round((diskInfo.used / diskInfo.total) * 100);
+      } catch {
+        diskInfo = { total: 0, used: 0, free: 0, percent: 0 };
+      }
+      
+      const uptimeSeconds = os.uptime();
+      const processMemory = process.memoryUsage();
+      
+      res.json({
+        cpu: {
+          usage: cpuUsage,
+          cores: cpuCount,
+          model: cpus[0]?.model || "Unknown"
+        },
+        memory: {
+          total: totalMemory,
+          used: usedMemory,
+          free: freeMemory,
+          percent: memoryUsagePercent
+        },
+        disk: diskInfo,
+        uptime: uptimeSeconds,
+        process: {
+          heapUsed: processMemory.heapUsed,
+          heapTotal: processMemory.heapTotal,
+          rss: processMemory.rss,
+          external: processMemory.external
+        },
+        node: {
+          version: process.version,
+          platform: process.platform,
+          arch: process.arch
+        },
+        system: {
+          hostname: os.hostname(),
+          platform: os.platform(),
+          arch: os.arch(),
+          release: os.release()
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/admin/system/health", requireAuth, requireAdmin, async (_req, res, next) => {
+    try {
+      const totalMemory = os.totalmem();
+      const freeMemory = os.freemem();
+      const memoryUsagePercent = Math.round(((totalMemory - freeMemory) / totalMemory) * 100);
+      
+      const cpus = os.cpus();
+      let totalIdle = 0;
+      let totalTick = 0;
+      for (const cpu of cpus) {
+        for (const type in cpu.times) {
+          totalTick += cpu.times[type as keyof typeof cpu.times];
+        }
+        totalIdle += cpu.times.idle;
+      }
+      const cpuUsage = Math.round((1 - totalIdle / totalTick) * 100);
+      
+      let status: "healthy" | "warning" | "critical" = "healthy";
+      const issues: string[] = [];
+      
+      if (memoryUsagePercent > 90) {
+        status = "critical";
+        issues.push("Memory usage is critically high");
+      } else if (memoryUsagePercent > 75) {
+        status = status === "critical" ? "critical" : "warning";
+        issues.push("Memory usage is high");
+      }
+      
+      if (cpuUsage > 90) {
+        status = "critical";
+        issues.push("CPU usage is critically high");
+      } else if (cpuUsage > 75) {
+        status = status === "critical" ? "critical" : "warning";
+        issues.push("CPU usage is high");
+      }
+      
+      res.json({
+        status,
+        issues,
+        checks: {
+          memory: memoryUsagePercent <= 90 ? "ok" : "warning",
+          cpu: cpuUsage <= 90 ? "ok" : "warning",
+          uptime: os.uptime() > 60 ? "ok" : "starting"
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   return httpServer;

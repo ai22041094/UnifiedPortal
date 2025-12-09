@@ -122,11 +122,11 @@ const adminMenuItems = [
     title: "System Monitoring",
     description: "Monitor system health and performance",
     icon: Activity,
-    href: "#",
+    href: "/admin/monitoring",
     color: "text-pink-500",
     bgColor: "bg-pink-500/10",
     permission: "admin.monitoring",
-    available: false,
+    available: true,
   },
 ];
 
