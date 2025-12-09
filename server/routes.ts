@@ -2292,7 +2292,7 @@ export async function registerRoutes(
         status = "critical";
         issues.push("Memory usage is critically high");
       } else if (memoryUsagePercent > 75) {
-        status = status === "critical" ? "critical" : "warning";
+        status = "warning";
         issues.push("Memory usage is high");
       }
       
@@ -2300,7 +2300,7 @@ export async function registerRoutes(
         status = "critical";
         issues.push("CPU usage is critically high");
       } else if (cpuUsage > 75) {
-        status = status === "critical" ? "critical" : "warning";
+        if (status === "healthy") status = "warning";
         issues.push("CPU usage is high");
       }
       
