@@ -108,6 +108,48 @@ export const MENU_ITEMS: MenuGroup[] = [
         icon: Shield,
         href: "/admin/roles",
       },
+      {
+        id: "admin.organization",
+        label: "Organization Settings",
+        icon: Building2,
+        href: "/admin/organization",
+      },
+      {
+        id: "admin.audit-logs",
+        label: "Audit Logs",
+        icon: FileText,
+        href: "/admin/audit-logs",
+      },
+      {
+        id: "admin.notifications",
+        label: "Notification Settings",
+        icon: Bell,
+        href: "/admin/notifications",
+      },
+      {
+        id: "admin.security",
+        label: "Security Settings",
+        icon: Lock,
+        href: "/admin/security",
+      },
+      {
+        id: "admin.system",
+        label: "System Configuration",
+        icon: Settings,
+        href: "/admin/system",
+      },
+      {
+        id: "admin.database",
+        label: "Database Management",
+        icon: Database,
+        href: "/admin/database",
+      },
+      {
+        id: "admin.monitoring",
+        label: "System Monitoring",
+        icon: Activity,
+        href: "/admin/monitoring",
+      },
     ],
   },
   {
