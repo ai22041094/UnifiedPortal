@@ -111,11 +111,11 @@ const adminMenuItems = [
     title: "Database Management",
     description: "Backup, restore, and manage database",
     icon: Database,
-    href: "#",
+    href: "/admin/database",
     color: "text-cyan-500",
     bgColor: "bg-cyan-500/10",
     permission: "admin.database",
-    available: false,
+    available: true,
   },
   {
     id: "monitoring",

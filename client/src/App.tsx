@@ -24,6 +24,7 @@ import NotificationSettings from "@/pages/admin/NotificationSettings";
 import SecuritySettings from "@/pages/admin/SecuritySettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
 import SystemConfig from "@/pages/admin/SystemConfig";
+import DatabaseManagement from "@/pages/admin/DatabaseManagement";
 
 function Router() {
   return (
@@ -87,6 +88,11 @@ function Router() {
       <Route path="/admin/system-config">
         <ProtectedRoute>
           <SystemConfig />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/database">
+        <ProtectedRoute>
+          <DatabaseManagement />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">
