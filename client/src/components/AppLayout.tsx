@@ -41,6 +41,24 @@ import {
   Bell,
   LucideIcon,
   Database,
+  UserCheck,
+  Cog,
+  Building2,
+  MapPin,
+  Briefcase,
+  Key,
+  Monitor,
+  MessageSquare,
+  GitBranch,
+  Clock,
+  Palmtree,
+  Image,
+  FileCheck,
+  Layers,
+  SquareStack,
+  SquareCheck,
+  UserPlus,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -216,6 +234,68 @@ const serviceDeskNavItems: NavItem[] = [
       { id: "settings-escalation", icon: TrendingUp, label: "Escalation Rules", href: "/apps/service-desk/settings/escalation-rules" },
       { id: "settings-email", icon: Mail, label: "Email Templates", href: "/apps/service-desk/settings/email-templates" },
       { id: "settings-notifications", icon: Bell, label: "Notifications", href: "/apps/service-desk/settings/notifications" },
+    ]
+  },
+  {
+    id: "approval-config",
+    icon: CheckCircle,
+    label: "Approval Configuration",
+    children: [
+      { id: "approval-mapping", icon: GitBranch, label: "Approval Mapping", href: "/apps/service-desk/approval-config/mapping" },
+      { id: "cab-approval", icon: Users, label: "CAB Approval", href: "/apps/service-desk/approval-config/cab" },
+    ]
+  },
+  {
+    id: "raw-config",
+    icon: Cog,
+    label: "RAW Configuration",
+    children: [
+      { id: "raw-category", icon: Tags, label: "Add Category", href: "/apps/service-desk/raw-config/category" },
+      { id: "raw-change-type", icon: RefreshCw, label: "Add Change Type", href: "/apps/service-desk/raw-config/change-type" },
+      { id: "raw-desk-template", icon: FileText, label: "Add Desk Template", href: "/apps/service-desk/raw-config/desk-template" },
+      { id: "raw-email-config", icon: Mail, label: "Add Email Config", href: "/apps/service-desk/raw-config/email-config" },
+      { id: "raw-escalation-matrix", icon: TrendingUp, label: "Add Escalation Matrix", href: "/apps/service-desk/raw-config/escalation-matrix" },
+      { id: "raw-org-logo", icon: Image, label: "Add Org Logo", href: "/apps/service-desk/raw-config/org-logo" },
+      { id: "raw-priority", icon: Zap, label: "Add Priority", href: "/apps/service-desk/raw-config/priority" },
+      { id: "raw-reason-change", icon: FileCheck, label: "Add Reason For Change", href: "/apps/service-desk/raw-config/reason-change" },
+      { id: "raw-requester", icon: UserPlus, label: "Add Requester", href: "/apps/service-desk/raw-config/requester" },
+      { id: "raw-resolution", icon: SquareCheck, label: "Add Resolution", href: "/apps/service-desk/raw-config/resolution" },
+      { id: "raw-severity", icon: AlertTriangle, label: "Add Severity", href: "/apps/service-desk/raw-config/severity" },
+      { id: "raw-sla", icon: Timer, label: "Add SLA", href: "/apps/service-desk/raw-config/sla" },
+      { id: "raw-stage", icon: Layers, label: "Add Stage", href: "/apps/service-desk/raw-config/stage" },
+      { id: "raw-status", icon: Activity, label: "Add Status", href: "/apps/service-desk/raw-config/status" },
+      { id: "raw-sr-change-approver", icon: UserCheck, label: "SR & Change Approver", href: "/apps/service-desk/raw-config/sr-change-approver" },
+    ]
+  },
+  {
+    id: "administration",
+    icon: Briefcase,
+    label: "Administration",
+    children: [
+      { id: "admin-accounts", icon: Users, label: "Accounts", href: "/apps/service-desk/administration/accounts" },
+      { id: "admin-custom-field-values", icon: SquareStack, label: "Add Custom Field Values", href: "/apps/service-desk/administration/custom-field-values" },
+      { id: "admin-custom-fields", icon: PlusCircle, label: "Add Custom Fields", href: "/apps/service-desk/administration/custom-fields" },
+      { id: "admin-department", icon: Building2, label: "Add Department", href: "/apps/service-desk/administration/department" },
+      { id: "admin-location", icon: MapPin, label: "Add Location", href: "/apps/service-desk/administration/location" },
+      { id: "admin-organization", icon: Building2, label: "Add Organization", href: "/apps/service-desk/administration/organization" },
+      { id: "admin-assignment-group", icon: Users, label: "Assignment Group", href: "/apps/service-desk/administration/assignment-group" },
+      { id: "admin-available-licence", icon: Key, label: "Available Licence", href: "/apps/service-desk/administration/available-licence" },
+      { id: "admin-configured-desk", icon: Monitor, label: "Configured Desk", href: "/apps/service-desk/administration/configured-desk" },
+      { id: "admin-desk-config", icon: Settings, label: "Desk Configuration", href: "/apps/service-desk/administration/desk-config" },
+      { id: "admin-email-template", icon: Mail, label: "Email Template", href: "/apps/service-desk/administration/email-template" },
+      { id: "admin-engineer-pool", icon: Wrench, label: "Engineer Pool", href: "/apps/service-desk/administration/engineer-pool" },
+      { id: "admin-feedback-config", icon: MessageSquare, label: "FeedBack Configuration", href: "/apps/service-desk/administration/feedback-config" },
+      { id: "admin-flow-chart", icon: GitBranch, label: "Flow Chart", href: "/apps/service-desk/administration/flow-chart" },
+    ]
+  },
+  {
+    id: "coverage-schedules",
+    icon: Calendar,
+    label: "Coverage Schedules",
+    children: [
+      { id: "coverage-add-leave", icon: Palmtree, label: "Add Leave", href: "/apps/service-desk/coverage/add-leave" },
+      { id: "coverage-holidays", icon: Calendar, label: "Holidays", href: "/apps/service-desk/coverage/holidays" },
+      { id: "coverage-operational-hours", icon: Clock, label: "Operational Hours", href: "/apps/service-desk/coverage/operational-hours" },
     ]
   },
 ];
