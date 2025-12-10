@@ -2081,9 +2081,13 @@ export async function registerRoutes(
           status: "success",
         });
 
+        const rows = Array.isArray(result) ? result : (result as any).rows || [];
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        
         res.json({
           success: true,
-          result: Array.isArray(result) ? result : [],
+          columns,
+          rows,
           rowsAffected,
           executionTime,
           queryType,
