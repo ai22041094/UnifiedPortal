@@ -62,7 +62,7 @@ export default function CFODashboard() {
   };
 
   return (
-    <AppLayout title="CFO Dashboard" appName="Dashboards">
+    <AppLayout title="CFO Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

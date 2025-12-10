@@ -49,7 +49,7 @@ const kpiCards = [
 
 export default function COODashboard() {
   return (
-    <AppLayout title="COO Dashboard" appName="Dashboards">
+    <AppLayout title="COO Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

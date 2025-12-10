@@ -59,7 +59,7 @@ const insights = [
 
 export default function ProductivityDashboard() {
   return (
-    <AppLayout title="Productivity Dashboard" appName="Dashboards">
+    <AppLayout title="Productivity Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

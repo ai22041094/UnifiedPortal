@@ -54,7 +54,7 @@ const systemHealth = [
 
 export default function OverviewDashboard() {
   return (
-    <AppLayout title="Overview Dashboard" appName="Dashboards">
+    <AppLayout title="Overview Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

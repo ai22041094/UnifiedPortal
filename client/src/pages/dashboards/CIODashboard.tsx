@@ -49,7 +49,7 @@ const infrastructureStats = [
 
 export default function CIODashboard() {
   return (
-    <AppLayout title="CIO Dashboard" appName="Dashboards">
+    <AppLayout title="CIO Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

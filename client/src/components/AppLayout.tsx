@@ -298,7 +298,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
   const { hasPermission, isAdmin } = useRBAC();
 
   const navItems = appName === "Service Desk" ? serviceDeskNavItems : 
-                   appName === "Dashboards" ? dashboardsNavItems : defaultNavItems;
+                   appName === "Dashboards" ? serviceDeskNavItems : defaultNavItems;
 
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
   
