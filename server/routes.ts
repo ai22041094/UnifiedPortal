@@ -232,11 +232,39 @@ export async function registerRoutes(
             if (failedAttempts >= maxAttempts) {
               const lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
               await storage.lockUserAccount(existingUser.id, lockUntil);
+              
+              // Log account lockout
+              await storage.createAuditLog({
+                userId: existingUser.id,
+                username: existingUser.username,
+                action: "account_locked",
+                category: "auth",
+                resourceType: "user",
+                resourceId: existingUser.id,
+                details: `Account locked after ${maxAttempts} failed login attempts`,
+                ipAddress: req.ip || null,
+                userAgent: req.headers["user-agent"] || null,
+                status: "failure",
+              });
+              
               return res.status(401).json({
                 message: `Account locked due to too many failed attempts. Try again in ${lockoutMinutes} minutes.`
               });
             }
           }
+          
+          // Log failed login attempt
+          await storage.createAuditLog({
+            userId: existingUser?.id || null,
+            username: username,
+            action: "login_failed",
+            category: "auth",
+            resourceType: "user",
+            details: info?.message || "Invalid username or password",
+            ipAddress: req.ip || null,
+            userAgent: req.headers["user-agent"] || null,
+            status: "failure",
+          });
         }
         
         return res.status(401).json({
@@ -257,7 +285,7 @@ export async function registerRoutes(
       // Reset failed login attempts on successful login
       await storage.resetFailedLoginAttempts(user.id);
 
-      req.login(user, (err) => {
+      req.login(user, async (err) => {
         if (err) {
           return next(err);
         }
@@ -265,6 +293,20 @@ export async function registerRoutes(
         const token = generateAuthToken();
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         authTokens.set(token, { userId: user.id, expiresAt });
+        
+        // Log successful login
+        await storage.createAuditLog({
+          userId: user.id,
+          username: user.username,
+          action: "login_success",
+          category: "auth",
+          resourceType: "user",
+          resourceId: user.id,
+          details: "User logged in successfully",
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          status: "success",
+        });
         
         req.session.save((saveErr) => {
           if (saveErr) {
@@ -280,7 +322,25 @@ export async function registerRoutes(
     })(req, res, next);
   });
 
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", async (req, res) => {
+    const user = req.user as SafeUser | undefined;
+    
+    // Log logout before destroying session
+    if (user) {
+      await storage.createAuditLog({
+        userId: user.id,
+        username: user.username,
+        action: "logout",
+        category: "auth",
+        resourceType: "user",
+        resourceId: user.id,
+        details: "User logged out",
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: "success",
+      });
+    }
+    
     req.logout((err) => {
       if (err) {
         return res.status(500).json({ message: "Logout failed" });
