@@ -40,6 +40,7 @@ import {
   Mail,
   Bell,
   LucideIcon,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -70,6 +71,15 @@ const masterItems = [
 
 const serviceDeskNavItems: NavItem[] = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", href: "/apps/service-desk" },
+  {
+    id: "masters",
+    icon: Database,
+    label: "Masters",
+    children: [
+      { id: "masters-user", icon: Users, label: "User Master", href: "/admin/users" },
+      { id: "masters-role", icon: Shield, label: "Role Master", href: "/admin/roles" },
+    ]
+  },
   { 
     id: "incidents", 
     icon: AlertTriangle, 
@@ -292,30 +302,6 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
           {navItems.map((item) => (
             <NavMenuItem key={item.id} item={item} location={location} />
           ))}
-          
-          {/* Masters Section - Only visible to admins */}
-          {showMasterSection && filteredMasterItems.length > 0 && (
-            <div className="pt-4 mt-4 border-t border-border/50">
-              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Masters</p>
-              {filteredMasterItems.map((item) => (
-                <Button
-                  key={item.id}
-                  variant={location === item.href ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
-                    location === item.href && "text-primary font-medium"
-                  )}
-                  asChild
-                  data-testid={`link-master-${item.id}`}
-                >
-                  <Link href={item.href}>
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          )}
         </nav>
 
         <div className="p-4 border-t border-border/50 space-y-2">
