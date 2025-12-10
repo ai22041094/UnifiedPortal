@@ -10,13 +10,44 @@ import {
   Settings,
   LogOut,
   Users,
-  Shield
+  Shield,
+  AlertTriangle,
+  ClipboardCheck,
+  BookOpen,
+  Timer,
+  Search,
+  RefreshCw,
+  FolderKanban,
+  MessagesSquare,
+  Laptop,
+  ChevronDown,
+  ChevronRight,
+  PlusCircle,
+  ListChecks,
+  UserCircle,
+  FileText,
+  MessageCircleQuestion,
+  Activity,
+  Target,
+  Calendar,
+  CheckCircle,
+  TrendingUp,
+  History,
+  Link2,
+  Tags,
+  Workflow,
+  Zap,
+  Mail,
+  Bell,
+  LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,22 +55,219 @@ interface AppLayoutProps {
   appName: string;
 }
 
+interface NavItem {
+  id: string;
+  icon: LucideIcon;
+  label: string;
+  href?: string;
+  children?: NavItem[];
+}
+
 const masterItems = [
   { id: "user-master", icon: Users, label: "User Master", href: "/admin/users", permission: "admin.user-master" },
   { id: "role-master", icon: Shield, label: "Role Master", href: "/admin/roles", permission: "admin.role-master" },
 ];
+
+const serviceDeskNavItems: NavItem[] = [
+  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", href: "/apps/service-desk" },
+  { 
+    id: "incidents", 
+    icon: AlertTriangle, 
+    label: "Incident Management",
+    children: [
+      { id: "incidents-create", icon: PlusCircle, label: "Create Incident", href: "/apps/service-desk/incidents/create" },
+      { id: "incidents-list", icon: ListChecks, label: "All Incidents", href: "/apps/service-desk/incidents/list" },
+      { id: "incidents-my", icon: UserCircle, label: "My Incidents", href: "/apps/service-desk/incidents/my-incidents" },
+      { id: "incidents-critical", icon: AlertTriangle, label: "Critical Incidents", href: "/apps/service-desk/incidents/critical" },
+    ]
+  },
+  { 
+    id: "requests", 
+    icon: ClipboardCheck, 
+    label: "Service Requests",
+    children: [
+      { id: "requests-create", icon: PlusCircle, label: "New Request", href: "/apps/service-desk/requests/create" },
+      { id: "requests-list", icon: ListChecks, label: "All Requests", href: "/apps/service-desk/requests/list" },
+      { id: "requests-my", icon: UserCircle, label: "My Requests", href: "/apps/service-desk/requests/my-requests" },
+      { id: "requests-approvals", icon: CheckCircle, label: "Pending Approvals", href: "/apps/service-desk/requests/approvals" },
+    ]
+  },
+  { 
+    id: "problems", 
+    icon: Search, 
+    label: "Problem Management",
+    children: [
+      { id: "problems-create", icon: PlusCircle, label: "Create Problem", href: "/apps/service-desk/problems/create" },
+      { id: "problems-list", icon: ListChecks, label: "All Problems", href: "/apps/service-desk/problems/list" },
+      { id: "problems-root-cause", icon: Target, label: "Root Cause Analysis", href: "/apps/service-desk/problems/root-cause" },
+      { id: "problems-known-errors", icon: AlertTriangle, label: "Known Errors", href: "/apps/service-desk/problems/known-errors" },
+    ]
+  },
+  { 
+    id: "changes", 
+    icon: RefreshCw, 
+    label: "Change Management",
+    children: [
+      { id: "changes-create", icon: PlusCircle, label: "Create Change", href: "/apps/service-desk/changes/create" },
+      { id: "changes-list", icon: ListChecks, label: "All Changes", href: "/apps/service-desk/changes/list" },
+      { id: "changes-calendar", icon: Calendar, label: "Change Calendar", href: "/apps/service-desk/changes/calendar" },
+      { id: "changes-approvals", icon: CheckCircle, label: "Change Approvals", href: "/apps/service-desk/changes/approvals" },
+    ]
+  },
+  { 
+    id: "queue", 
+    icon: FolderKanban, 
+    label: "Queue Management",
+    children: [
+      { id: "queue-my", icon: UserCircle, label: "My Queue", href: "/apps/service-desk/queue/my-queue" },
+      { id: "queue-unassigned", icon: ListChecks, label: "Unassigned Tickets", href: "/apps/service-desk/queue/unassigned" },
+      { id: "queue-escalations", icon: TrendingUp, label: "Escalations", href: "/apps/service-desk/queue/escalations" },
+      { id: "queue-team", icon: Users, label: "Team Workload", href: "/apps/service-desk/queue/team-workload" },
+    ]
+  },
+  { 
+    id: "knowledge", 
+    icon: BookOpen, 
+    label: "Knowledge Base",
+    children: [
+      { id: "knowledge-articles", icon: FileText, label: "Articles", href: "/apps/service-desk/knowledge/articles" },
+      { id: "knowledge-faqs", icon: MessageCircleQuestion, label: "FAQs", href: "/apps/service-desk/knowledge/faqs" },
+      { id: "knowledge-search", icon: Search, label: "Search", href: "/apps/service-desk/knowledge/search" },
+    ]
+  },
+  { 
+    id: "sla", 
+    icon: Timer, 
+    label: "SLA Management",
+    children: [
+      { id: "sla-policies", icon: FileText, label: "SLA Policies", href: "/apps/service-desk/sla/policies" },
+      { id: "sla-monitoring", icon: Activity, label: "SLA Monitoring", href: "/apps/service-desk/sla/monitoring" },
+      { id: "sla-reports", icon: BarChart3, label: "SLA Reports", href: "/apps/service-desk/sla/reports" },
+    ]
+  },
+  { 
+    id: "chat", 
+    icon: MessagesSquare, 
+    label: "Live Chat",
+    children: [
+      { id: "chat-active", icon: MessagesSquare, label: "Active Chats", href: "/apps/service-desk/chat/active" },
+      { id: "chat-history", icon: History, label: "Chat History", href: "/apps/service-desk/chat/history" },
+      { id: "chat-canned", icon: FileText, label: "Canned Responses", href: "/apps/service-desk/chat/canned-responses" },
+    ]
+  },
+  { 
+    id: "assets", 
+    icon: Laptop, 
+    label: "Asset Integration",
+    children: [
+      { id: "assets-link", icon: Link2, label: "Link Assets", href: "/apps/service-desk/assets/link" },
+      { id: "assets-affected", icon: Package, label: "Affected Assets", href: "/apps/service-desk/assets/affected" },
+    ]
+  },
+  { 
+    id: "reports", 
+    icon: BarChart3, 
+    label: "Reports",
+    children: [
+      { id: "reports-incidents", icon: FileText, label: "Incident Reports", href: "/apps/service-desk/reports/incidents" },
+      { id: "reports-performance", icon: TrendingUp, label: "Performance Reports", href: "/apps/service-desk/reports/performance" },
+      { id: "reports-trends", icon: BarChart3, label: "Trend Analysis", href: "/apps/service-desk/reports/trends" },
+    ]
+  },
+  { 
+    id: "settings", 
+    icon: Settings, 
+    label: "Settings",
+    children: [
+      { id: "settings-general", icon: Settings, label: "General Settings", href: "/apps/service-desk/settings/general" },
+      { id: "settings-categories", icon: Tags, label: "Categories", href: "/apps/service-desk/settings/categories" },
+      { id: "settings-priorities", icon: Zap, label: "Priority Levels", href: "/apps/service-desk/settings/priorities" },
+      { id: "settings-workflows", icon: Workflow, label: "Workflows", href: "/apps/service-desk/settings/workflows" },
+      { id: "settings-escalation", icon: TrendingUp, label: "Escalation Rules", href: "/apps/service-desk/settings/escalation-rules" },
+      { id: "settings-email", icon: Mail, label: "Email Templates", href: "/apps/service-desk/settings/email-templates" },
+      { id: "settings-notifications", icon: Bell, label: "Notifications", href: "/apps/service-desk/settings/notifications" },
+    ]
+  },
+];
+
+const defaultNavItems: NavItem[] = [
+  { id: "dashboard", icon: Home, label: "Dashboard", href: "#" },
+  { id: "projects", icon: LayoutDashboard, label: "Projects", href: "#" },
+  { id: "assets", icon: Package, label: "Assets", href: "#" },
+  { id: "settings", icon: Settings, label: "Settings", href: "#" },
+];
+
+function NavMenuItem({ item, location }: { item: NavItem; location: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = item.children && item.children.length > 0;
+  const isActive = item.href === location || item.children?.some(child => child.href === location);
+
+  if (hasChildren) {
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant={isActive ? "secondary" : "ghost"}
+            className={cn(
+              "w-full justify-between gap-3 text-muted-foreground hover:text-foreground",
+              isActive && "text-primary font-medium"
+            )}
+            data-testid={`nav-${item.id}`}
+          >
+            <span className="flex items-center gap-3">
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </span>
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-4 space-y-1 mt-1">
+          {item.children?.map((child) => (
+            <Button
+              key={child.id}
+              variant={location === child.href ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start gap-3 text-muted-foreground hover:text-foreground text-sm",
+                location === child.href && "text-primary font-medium"
+              )}
+              asChild
+              data-testid={`nav-${child.id}`}
+            >
+              <Link href={child.href || "#"}>
+                <child.icon className="h-3 w-3" />
+                {child.label}
+              </Link>
+            </Button>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <Button
+      variant={location === item.href ? "secondary" : "ghost"}
+      className={cn(
+        "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
+        location === item.href && "text-primary font-medium"
+      )}
+      asChild
+      data-testid={`nav-${item.id}`}
+    >
+      <Link href={item.href || "#"}>
+        <item.icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    </Button>
+  );
+}
 
 export default function AppLayout({ children, title, appName }: AppLayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { hasPermission, isAdmin } = useRBAC();
 
-  const navItems = [
-    { icon: Home, label: "Dashboard", href: `/apps/${appName.toLowerCase().replace(/\s/g, '-')}` },
-    { icon: LayoutDashboard, label: "Projects", href: "#" },
-    { icon: Package, label: "Assets", href: "#" },
-    { icon: Settings, label: "Settings", href: "#" },
-  ];
+  const navItems = appName === "Service Desk" ? serviceDeskNavItems : defaultNavItems;
 
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
   
@@ -62,20 +290,7 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
-            <Button
-              key={item.label}
-              variant={location === item.href ? "secondary" : "ghost"}
-              className={cn(
-                "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
-                location === item.href && "text-primary font-medium"
-              )}
-              asChild
-            >
-              <Link href={item.href}>
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            </Button>
+            <NavMenuItem key={item.id} item={item} location={location} />
           ))}
           
           {/* Masters Section - Only visible to admins */}
