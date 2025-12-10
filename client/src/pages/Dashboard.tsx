@@ -7,18 +7,18 @@ import {
   HeadphonesIcon,
   BarChart3,
   LogOut,
-  Users,
-  Clock,
-  Activity,
-  TrendingUp,
   Settings,
   User,
   KeyRound,
-  ChevronDown
+  ChevronDown,
+  ArrowRight,
+  Shield,
+  Zap,
+  Globe,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useRBAC } from "@/lib/rbac";
-import { Badge } from "@/components/ui/badge";
+import portalBg from "@assets/generated_images/blue_corporate_tech_background_with_city_and_network_lines.png";
 
 interface PublicOrgSettings {
   organizationName: string;
@@ -49,8 +49,7 @@ const apps = [
     description: "Enhances management, streamlines procurement, optimizes licensing.",
     icon: LayoutDashboard,
     href: "/apps/custom-portal",
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
+    gradient: "from-blue-500 to-blue-600",
   },
   {
     id: "alm",
@@ -58,8 +57,7 @@ const apps = [
     description: "IT & Non-IT ALM: Smooth Control from Requisition to Disposal",
     icon: Package,
     href: "/apps/alm",
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
+    gradient: "from-indigo-500 to-indigo-600",
   },
   {
     id: "service-desk",
@@ -67,8 +65,7 @@ const apps = [
     description: "Streamlined Service Desk Solutions: Built to Evolve With Your Business",
     icon: HeadphonesIcon,
     href: "/apps/service-desk",
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500/10",
+    gradient: "from-cyan-500 to-cyan-600",
   },
   {
     id: "epm",
@@ -76,23 +73,26 @@ const apps = [
     description: "Optimize Performance, Enhance Productivity – Smart Workforce Insights!",
     icon: BarChart3,
     href: "/apps/epm",
-    color: "text-sky-500",
-    bgColor: "bg-sky-500/10",
+    gradient: "from-sky-500 to-sky-600",
   }
 ];
 
-const stats = [
-  { label: "Active Users", value: "1,248", change: "+12%", icon: Users, trend: "up" },
-  { label: "Open Tickets", value: "42", change: "8 urgent", icon: Activity, trend: "neutral" },
-  { label: "Assets Managed", value: "3,567", change: "+18%", icon: Package, trend: "up" },
-  { label: "Avg Response Time", value: "2.4h", change: "-15%", icon: Clock, trend: "down" },
-];
-
-const recentActivities = [
-  { action: "New ticket created", user: "John Doe", time: "5 minutes ago", type: "ticket" },
-  { action: "Asset approved", user: "Jane Smith", time: "15 minutes ago", type: "asset" },
-  { action: "License renewed", user: "Mike Johnson", time: "1 hour ago", type: "license" },
-  { action: "User onboarded", user: "Sarah Williams", time: "2 hours ago", type: "user" },
+const features = [
+  {
+    icon: Shield,
+    title: "Enterprise Security",
+    description: "Role-based access control and audit logging"
+  },
+  {
+    icon: Zap,
+    title: "Real-time Analytics",
+    description: "Live dashboards and performance metrics"
+  },
+  {
+    icon: Globe,
+    title: "Unified Platform",
+    description: "All your enterprise tools in one place"
+  }
 ];
 
 export default function Dashboard() {
@@ -127,184 +127,220 @@ export default function Dashboard() {
     
     return (
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-          <div className="h-4 w-4 bg-white rounded-sm transform rotate-45" />
+        <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center">
+          <div className="h-4 w-4 bg-primary rounded-sm transform rotate-45" />
         </div>
-        <span className="text-xl font-bold tracking-tight">{organizationName}</span>
+        <span className="text-xl font-bold tracking-tight text-white">{organizationName}</span>
       </div>
     );
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          {renderLogo()}
-          
-          <div className="flex items-center gap-4">
-            <NotificationBell />
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-3 px-2" data-testid="button-user-menu">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium" data-testid="text-username">{user?.username}</p>
-                    <p className="text-xs text-muted-foreground">Administrator</p>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary border-2 border-primary/20">
-                    {userInitials}
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/change-password")} data-testid="menu-change-password">
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Change Password
-                </DropdownMenuItem>
-                {(isAdmin || showAdminSection) && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/admin-console")} data-testid="menu-admin-console">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Admin Console
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} data-testid="menu-logout">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      {/* Hero Header Section - Matching Login Page Style */}
+      <div className="relative overflow-hidden">
+        {/* Background Image with Gradient Overlay */}
+        <div className="absolute inset-0">
+          <img 
+            src={portalBg} 
+            alt="Dashboard Background" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary/80 to-primary/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold mb-2" data-testid="text-welcome">
-            Welcome back, {user?.username}!
-          </h1>
-          <p className="text-muted-foreground">
-            Here's what's happening with your enterprise systems today.
-          </p>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        >
-          {stats.map((stat, index) => (
-            <Card key={index} className="hover-elevate">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`h-12 w-12 rounded-lg ${stat.trend === 'up' ? 'bg-green-500/10' : stat.trend === 'down' ? 'bg-blue-500/10' : 'bg-yellow-500/10'} flex items-center justify-center`}>
-                    <stat.icon className={`h-6 w-6 ${stat.trend === 'up' ? 'text-green-500' : stat.trend === 'down' ? 'text-blue-500' : 'text-yellow-500'}`} />
-                  </div>
-                  {stat.trend === 'up' && (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
+        {/* Header Navigation */}
+        <header className="relative z-10">
+          <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
+            {renderLogo()}
+            
+            <div className="flex items-center gap-4">
+              <NotificationBell />
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-3 px-2 text-white" data-testid="button-user-menu">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-sm font-medium text-white" data-testid="text-username">{user?.username}</p>
+                      <p className="text-xs text-white/70">Administrator</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white border-2 border-white/30">
+                      {userInitials}
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-white/70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/change-password")} data-testid="menu-change-password">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Change Password
+                  </DropdownMenuItem>
+                  {(isAdmin || showAdminSection) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin-console")} data-testid="menu-admin-console">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Admin Console
+                      </DropdownMenuItem>
+                    </>
                   )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <Badge variant={stat.trend === 'up' ? 'default' : 'secondary'} className="text-xs">
-                    {stat.change}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </motion.div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} data-testid="menu-logout">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Applications */}
+        {/* Welcome Section */}
+        <div className="relative z-10 container mx-auto px-6 py-12 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2"
+            transition={{ duration: 0.5 }}
           >
-            <h2 className="text-xl font-semibold mb-4">Your Applications</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {apps.map((app) => (
-                <Link key={app.id} href={app.href} data-testid={`link-app-${app.id}`}>
-                  <Card className="h-full hover-elevate cursor-pointer group transition-all duration-300">
-                    <CardHeader className="space-y-3">
-                      <div className={`h-12 w-12 rounded-lg ${app.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <app.icon className={`h-6 w-6 ${app.color}`} />
+            <h1 className="text-4xl font-bold mb-3 text-white" data-testid="text-welcome">
+              Welcome back, {user?.username}
+            </h1>
+            <p className="text-lg text-white/80 max-w-xl">
+              Access your enterprise applications and manage your digital assets from a single unified platform.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-6 -mt-12 relative z-20 pb-8">
+        {/* Applications Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-12"
+        >
+          <h2 className="text-xl font-semibold mb-6 text-foreground">Your Applications</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {apps.map((app, index) => (
+              <motion.div
+                key={app.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 + index * 0.05 }}
+              >
+                <Link href={app.href} data-testid={`link-app-${app.id}`}>
+                  <Card className="h-full hover-elevate cursor-pointer group overflow-visible">
+                    <CardContent className="p-6">
+                      <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${app.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                        <app.icon className="h-7 w-7 text-white" />
                       </div>
-                      <CardTitle className="text-lg">{app.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm">
+                      <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+                        {app.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                         {app.description}
-                      </CardDescription>
+                      </p>
+                      <div className="flex items-center text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                        Open App
+                        <ArrowRight className="ml-1 h-4 w-4" />
+                      </div>
                     </CardContent>
                   </Card>
                 </Link>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Features Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mb-12"
+        >
+          <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-2xl p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-2">Enterprise-Grade Platform</h2>
+              <p className="text-muted-foreground">Built for security, scalability, and performance</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                  className="text-center"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <feature.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-1">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                </motion.div>
               ))}
             </div>
+          </div>
+        </motion.div>
 
-          </motion.div>
-
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-            <Card>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {recentActivities.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="p-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Activity className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {activity.action}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {activity.user}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {activity.time}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <h2 className="text-xl font-semibold mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex-col gap-2"
+              onClick={() => navigate("/profile")}
+              data-testid="button-quick-profile"
+            >
+              <User className="h-5 w-5" />
+              <span className="text-sm">My Profile</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex-col gap-2"
+              onClick={() => navigate("/change-password")}
+              data-testid="button-quick-password"
+            >
+              <KeyRound className="h-5 w-5" />
+              <span className="text-sm">Change Password</span>
+            </Button>
+            {showAdminSection && (
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex-col gap-2"
+                onClick={() => navigate("/admin-console")}
+                data-testid="button-quick-admin"
+              >
+                <Settings className="h-5 w-5" />
+                <span className="text-sm">Admin Console</span>
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex-col gap-2 text-destructive hover:text-destructive"
+              onClick={logout}
+              data-testid="button-quick-logout"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="text-sm">Logout</span>
+            </Button>
+          </div>
+        </motion.div>
 
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-border/50 text-center text-sm text-muted-foreground" data-testid="text-dashboard-copyright">
