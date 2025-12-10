@@ -671,13 +671,68 @@ export const MENU_ITEMS: MenuGroup[] = [
         ],
       },
       {
+        id: "sd.problems",
+        label: "Problem Management",
+        icon: Search,
+        children: [
+          { id: "sd.problems.create", label: "Create Problem", icon: PlusCircle, href: "/apps/service-desk/problems/create" },
+          { id: "sd.problems.list", label: "All Problems", icon: ListChecks, href: "/apps/service-desk/problems/list" },
+          { id: "sd.problems.root-cause", label: "Root Cause Analysis", icon: Target, href: "/apps/service-desk/problems/root-cause" },
+          { id: "sd.problems.known-errors", label: "Known Errors", icon: AlertTriangle, href: "/apps/service-desk/problems/known-errors" },
+        ],
+      },
+      {
+        id: "sd.changes",
+        label: "Change Management",
+        icon: RefreshCw,
+        children: [
+          { id: "sd.changes.create", label: "Create Change Request", icon: PlusCircle, href: "/apps/service-desk/changes/create" },
+          { id: "sd.changes.list", label: "All Changes", icon: ListChecks, href: "/apps/service-desk/changes/list" },
+          { id: "sd.changes.calendar", label: "Change Calendar", icon: Calendar, href: "/apps/service-desk/changes/calendar" },
+          { id: "sd.changes.approvals", label: "Change Approvals", icon: CheckCircle, href: "/apps/service-desk/changes/approvals" },
+        ],
+      },
+      {
+        id: "sd.queue",
+        label: "Queue Management",
+        icon: FolderKanban,
+        children: [
+          { id: "sd.queue.my-queue", label: "My Queue", icon: UserCircle, href: "/apps/service-desk/queue/my-queue" },
+          { id: "sd.queue.unassigned", label: "Unassigned Tickets", icon: ListChecks, href: "/apps/service-desk/queue/unassigned" },
+          { id: "sd.queue.escalations", label: "Escalations", icon: TrendingUp, href: "/apps/service-desk/queue/escalations" },
+          { id: "sd.queue.team-workload", label: "Team Workload", icon: Users, href: "/apps/service-desk/queue/team-workload" },
+        ],
+      },
+      {
+        id: "sd.chat",
+        label: "Live Chat",
+        icon: MessagesSquare,
+        children: [
+          { id: "sd.chat.active", label: "Active Chats", icon: MessagesSquare, href: "/apps/service-desk/chat/active" },
+          { id: "sd.chat.history", label: "Chat History", icon: History, href: "/apps/service-desk/chat/history" },
+          { id: "sd.chat.canned-responses", label: "Canned Responses", icon: FileText, href: "/apps/service-desk/chat/canned-responses" },
+        ],
+      },
+      {
+        id: "sd.assets",
+        label: "Asset Integration",
+        icon: Laptop,
+        children: [
+          { id: "sd.assets.link", label: "Link Assets", icon: Link2, href: "/apps/service-desk/assets/link" },
+          { id: "sd.assets.affected", label: "Affected Assets", icon: Package, href: "/apps/service-desk/assets/affected" },
+        ],
+      },
+      {
         id: "sd.settings",
         label: "Settings",
         icon: Settings,
         children: [
           { id: "sd.settings.general", label: "General Settings", icon: Settings, href: "/apps/service-desk/settings/general" },
           { id: "sd.settings.categories", label: "Categories", icon: Tags, href: "/apps/service-desk/settings/categories" },
+          { id: "sd.settings.priorities", label: "Priority Levels", icon: Zap, href: "/apps/service-desk/settings/priorities" },
           { id: "sd.settings.workflows", label: "Workflows", icon: Workflow, href: "/apps/service-desk/settings/workflows" },
+          { id: "sd.settings.escalation-rules", label: "Escalation Rules", icon: TrendingUp, href: "/apps/service-desk/settings/escalation-rules" },
+          { id: "sd.settings.email-templates", label: "Email Templates", icon: Mail, href: "/apps/service-desk/settings/email-templates" },
           { id: "sd.settings.notifications", label: "Notifications", icon: Bell, href: "/apps/service-desk/settings/notifications" },
         ],
       },
