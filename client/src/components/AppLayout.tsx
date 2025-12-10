@@ -69,6 +69,14 @@ const masterItems = [
   { id: "role-master", icon: Shield, label: "Role Master", href: "/admin/roles", permission: "admin.role-master" },
 ];
 
+const dashboardsNavItems: NavItem[] = [
+  { id: "overview", icon: LayoutDashboard, label: "Overview Dashboard", href: "/dashboards/overview" },
+  { id: "cio", icon: Activity, label: "CIO View", href: "/dashboards/cio" },
+  { id: "cfo", icon: BarChart3, label: "CFO View", href: "/dashboards/cfo" },
+  { id: "coo", icon: TrendingUp, label: "COO View", href: "/dashboards/coo" },
+  { id: "productivity", icon: Zap, label: "Productivity Dashboard", href: "/dashboards/productivity" },
+];
+
 const serviceDeskNavItems: NavItem[] = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", href: "/apps/service-desk" },
   {
@@ -277,7 +285,8 @@ export default function AppLayout({ children, title, appName }: AppLayoutProps) 
   const { user, logout } = useAuth();
   const { hasPermission, isAdmin } = useRBAC();
 
-  const navItems = appName === "Service Desk" ? serviceDeskNavItems : defaultNavItems;
+  const navItems = appName === "Service Desk" ? serviceDeskNavItems : 
+                   appName === "Dashboards" ? dashboardsNavItems : defaultNavItems;
 
   const userInitials = user?.username.slice(0, 2).toUpperCase() || "U";
   

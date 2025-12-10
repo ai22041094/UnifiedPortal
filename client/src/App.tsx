@@ -26,6 +26,11 @@ import AuditLogs from "@/pages/admin/AuditLogs";
 import SystemConfig from "@/pages/admin/SystemConfig";
 import DatabaseManagement from "@/pages/admin/DatabaseManagement";
 import SystemMonitoring from "@/pages/admin/SystemMonitoring";
+import OverviewDashboard from "@/pages/dashboards/OverviewDashboard";
+import CIODashboard from "@/pages/dashboards/CIODashboard";
+import CFODashboard from "@/pages/dashboards/CFODashboard";
+import COODashboard from "@/pages/dashboards/COODashboard";
+import ProductivityDashboard from "@/pages/dashboards/ProductivityDashboard";
 
 function Router() {
   return (
@@ -129,6 +134,31 @@ function Router() {
       <Route path="/apps/epm/*">
         <ProtectedRoute>
           <EPM />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboards/overview">
+        <ProtectedRoute>
+          <OverviewDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboards/cio">
+        <ProtectedRoute>
+          <CIODashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboards/cfo">
+        <ProtectedRoute>
+          <CFODashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboards/coo">
+        <ProtectedRoute>
+          <COODashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboards/productivity">
+        <ProtectedRoute>
+          <ProductivityDashboard />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

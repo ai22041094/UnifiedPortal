@@ -93,6 +93,42 @@ export interface MenuGroup {
 
 export const MENU_ITEMS: MenuGroup[] = [
   {
+    id: "dashboards",
+    label: "Dashboards",
+    items: [
+      {
+        id: "dashboard.overview",
+        label: "Overview Dashboard",
+        icon: LayoutDashboard,
+        href: "/dashboards/overview",
+      },
+      {
+        id: "dashboard.cio",
+        label: "CIO View",
+        icon: Eye,
+        href: "/dashboards/cio",
+      },
+      {
+        id: "dashboard.cfo",
+        label: "CFO View",
+        icon: DollarSign,
+        href: "/dashboards/cfo",
+      },
+      {
+        id: "dashboard.coo",
+        label: "COO View",
+        icon: Activity,
+        href: "/dashboards/coo",
+      },
+      {
+        id: "dashboard.productivity",
+        label: "Productivity Dashboard",
+        icon: TrendingUp,
+        href: "/dashboards/productivity",
+      },
+    ],
+  },
+  {
     id: "administration",
     label: "Administration",
     items: [
