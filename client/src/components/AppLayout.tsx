@@ -80,6 +80,18 @@ const dashboardsNavItems: NavItem[] = [
 const serviceDeskNavItems: NavItem[] = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", href: "/apps/service-desk" },
   {
+    id: "dashboards",
+    icon: BarChart3,
+    label: "Executive Dashboards",
+    children: [
+      { id: "dashboards-overview", icon: LayoutDashboard, label: "Overview Dashboard", href: "/dashboards/overview" },
+      { id: "dashboards-cio", icon: Activity, label: "CIO View", href: "/dashboards/cio" },
+      { id: "dashboards-cfo", icon: BarChart3, label: "CFO View", href: "/dashboards/cfo" },
+      { id: "dashboards-coo", icon: TrendingUp, label: "COO View", href: "/dashboards/coo" },
+      { id: "dashboards-productivity", icon: Zap, label: "Productivity Dashboard", href: "/dashboards/productivity" },
+    ]
+  },
+  {
     id: "masters",
     icon: Database,
     label: "Masters",
