@@ -2057,7 +2057,11 @@ export async function registerRoutes(
         
         const result = await db.execute(sql.raw(query));
         const executionTime = `${Date.now() - startTime}ms`;
-        const rowsAffected = Array.isArray(result) ? result.length.toString() : "0";
+        
+        // Extract rows from pg result object
+        const rows = (result as any).rows || [];
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        const rowsAffected = rows.length.toString();
 
         await storage.createQueryExecutionLog({
           query,
@@ -2080,9 +2084,6 @@ export async function registerRoutes(
           userAgent: req.headers["user-agent"] || null,
           status: "success",
         });
-
-        const rows = Array.isArray(result) ? result : (result as any).rows || [];
-        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
         
         res.json({
           success: true,
