@@ -2012,7 +2012,7 @@ export async function registerRoutes(
   app.get("/api/db/query-logs", requireAdmin, async (_req, res, next) => {
     try {
       const logs = await storage.getQueryExecutionLogs();
-      res.json(logs);
+      res.json({ logs });
     } catch (error) {
       next(error);
     }
