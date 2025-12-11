@@ -4,7 +4,7 @@ config();
 import { storage } from "../server/storage";
 import { hashPassword } from "../server/auth";
 import { db } from "../server/db";
-import { users, organizationSettings } from "../shared/schema";
+import { users, organizationSettings, licenseInfo } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
 interface RoleDefinition {
@@ -253,33 +253,101 @@ async function seedOrganizationSettings() {
   }
 }
 
+async function seedNormalUser() {
+  const normalUsername = "normal";
+  const normalPassword = "User123!";
+
+  try {
+    const existingUser = await storage.getUserByUsername(normalUsername);
+    
+    if (existingUser) {
+      console.log("  [SKIP] Normal user already exists");
+      return { created: false, username: normalUsername };
+    }
+
+    const hashedPassword = await hashPassword(normalPassword);
+    
+    await db.insert(users).values({
+      username: normalUsername,
+      password: hashedPassword,
+      fullName: "Normal User",
+      isActive: true,
+      isSystem: false,
+    });
+
+    console.log("  [CREATE] Normal test user created");
+    console.log(`           Username: ${normalUsername}`);
+    console.log(`           Password: ${normalPassword}`);
+    return { created: true, username: normalUsername, password: normalPassword };
+  } catch (error) {
+    console.error("  [ERROR] Failed to create normal user:", error);
+    throw error;
+  }
+}
+
+async function seedDefaultLicenseInfo() {
+  try {
+    const existingLicense = await db.select().from(licenseInfo).limit(1);
+    
+    if (existingLicense.length > 0) {
+      console.log("  [SKIP] License info already exists");
+      return { created: false };
+    }
+
+    await db.insert(licenseInfo).values({
+      licenseKey: null,
+      tenantId: null,
+      modules: [],
+      expiry: null,
+      lastValidationStatus: "NONE",
+      validationMessage: "No license configured",
+    } as any);
+
+    console.log("  [CREATE] Default license info created (no license)");
+    return { created: true };
+  } catch (error) {
+    console.error("  [ERROR] Failed to create license info:", error);
+    throw error;
+  }
+}
+
 async function seed() {
   console.log("==========================================");
   console.log("  Application Database Seeder");
   console.log("==========================================\n");
 
   try {
-    // Step 1: Seed Admin User
-    console.log("[1/3] Seeding admin user...\n");
+    // Step 1: Seed Admin User (Master)
+    console.log("[1/5] Seeding admin (master) user...\n");
     const adminResult = await seedAdminUser();
 
-    // Step 2: Seed Roles
-    console.log("\n[2/3] Seeding predefined roles...\n");
+    // Step 2: Seed Normal User
+    console.log("\n[2/5] Seeding normal test user...\n");
+    const normalResult = await seedNormalUser();
+
+    // Step 3: Seed Roles
+    console.log("\n[3/5] Seeding predefined roles...\n");
     const rolesResult = await seedRoles();
 
-    // Step 3: Seed Organization Settings
-    console.log("\n[3/3] Seeding organization settings...\n");
+    // Step 4: Seed Organization Settings
+    console.log("\n[4/5] Seeding organization settings...\n");
     const orgSettingsResult = await seedOrganizationSettings();
+
+    // Step 5: Seed Default License Info
+    console.log("\n[5/5] Seeding default license info...\n");
+    const licenseResult = await seedDefaultLicenseInfo();
 
     // Summary
     console.log("\n==========================================");
     console.log("  Seeding Complete!");
     console.log("==========================================");
-    console.log(`  Admin User: ${adminResult.username}`);
+    console.log(`  Master Admin: ${adminResult.username} (password: P@ssw0rd@123)`);
+    console.log(`  Normal User: ${normalResult.username} (password: User123!)`);
     console.log(`  Roles Created: ${rolesResult.created}`);
     console.log(`  Roles Skipped: ${rolesResult.skipped}`);
     console.log(`  Total Roles: ${rolesResult.total}`);
     console.log(`  Organization Settings: ${orgSettingsResult.created ? "Created" : "Already exists"}`);
+    console.log(`  License Info: ${licenseResult.created ? "Created (no license)" : "Already exists"}`);
     console.log("==========================================\n");
     
     process.exit(0);

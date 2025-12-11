@@ -26,6 +26,7 @@ import AuditLogs from "@/pages/admin/AuditLogs";
 import SystemConfig from "@/pages/admin/SystemConfig";
 import DatabaseManagement from "@/pages/admin/DatabaseManagement";
 import SystemMonitoring from "@/pages/admin/SystemMonitoring";
+import LicenseSettings from "@/pages/admin/LicenseSettings";
 import OverviewDashboard from "@/pages/dashboards/OverviewDashboard";
 import CIODashboard from "@/pages/dashboards/CIODashboard";
 import CFODashboard from "@/pages/dashboards/CFODashboard";
@@ -104,6 +105,11 @@ function Router() {
       <Route path="/admin/monitoring">
         <ProtectedRoute>
           <SystemMonitoring />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/license">
+        <ProtectedRoute>
+          <LicenseSettings />
         </ProtectedRoute>
       </Route>
       <Route path="/apps/custom-portal">

@@ -32,6 +32,9 @@ import {
   type InsertQueryExecutionLog,
   type DatabaseSettings,
   type UpdateDatabaseSettings,
+  type LicenseInfo,
+  type UpdateLicenseInfo,
+  type LicenseModule,
   users, 
   roles,
   epmApiKeys,
@@ -46,7 +49,8 @@ import {
   databaseBackups,
   backupSchedules,
   queryExecutionLogs,
-  databaseSettings
+  databaseSettings,
+  licenseInfo
 } from "@shared/schema";
 import { eq, and, isNull, gt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { db } from "./db";
@@ -151,6 +155,11 @@ export interface IStorage {
   // Database Settings methods
   getDatabaseSettings(): Promise<DatabaseSettings | undefined>;
   updateDatabaseSettings(data: UpdateDatabaseSettings, updatedByUserId: string): Promise<DatabaseSettings>;
+  
+  // License Info methods
+  getLicenseInfo(): Promise<LicenseInfo | undefined>;
+  updateLicenseInfo(data: UpdateLicenseInfo): Promise<LicenseInfo>;
+  createDefaultLicenseInfo(): Promise<LicenseInfo>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -814,6 +823,47 @@ export class PostgresStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // License Info methods
+  async getLicenseInfo(): Promise<LicenseInfo | undefined> {
+    const [license] = await db.select().from(licenseInfo).limit(1);
+    return license;
+  }
+
+  async updateLicenseInfo(data: UpdateLicenseInfo): Promise<LicenseInfo> {
+    const existing = await this.getLicenseInfo();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(licenseInfo)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(licenseInfo.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(licenseInfo)
+        .values(data as any)
+        .returning();
+      return created;
+    }
+  }
+
+  async createDefaultLicenseInfo(): Promise<LicenseInfo> {
+    const existing = await this.getLicenseInfo();
+    if (existing) {
+      return existing;
+    }
+    
+    const [created] = await db
+      .insert(licenseInfo)
+      .values({
+        lastValidationStatus: "NONE",
+        modules: [],
+      } as any)
+      .returning();
+    return created;
   }
 }
 

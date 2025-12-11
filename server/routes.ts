@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, type SafeUser, type InsertProcessDetails } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, type SafeUser, type InsertProcessDetails, type LicenseModule } from "@shared/schema";
 import webPush from "web-push";
+import { checkLicenseForLogin, getCurrentLicense, getAvailableModules, requireMasterAdmin, requireModuleAccess, validateLicenseWithServer, saveLicenseFromValidation, isMasterAdmin } from "./license";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -282,6 +283,27 @@ export async function registerRoutes(
         });
       }
 
+      // Check license status for non-master users
+      const licenseCheck = await checkLicenseForLogin(user);
+      if (!licenseCheck.allowed) {
+        await storage.createAuditLog({
+          userId: user.id,
+          username: user.username,
+          action: "login_blocked_license",
+          category: "auth",
+          resourceType: "user",
+          resourceId: user.id,
+          details: licenseCheck.message || "License check failed",
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          status: "failure",
+        });
+        
+        return res.status(403).json({
+          message: licenseCheck.message || "License check failed"
+        });
+      }
+
       // Reset failed login attempts on successful login
       await storage.resetFailedLoginAttempts(user.id);
 
@@ -381,6 +403,151 @@ export async function registerRoutes(
     } catch (error) {
       next(error);
     }
+  });
+
+  // Dashboard route - returns user info and available modules
+  app.get("/api/dashboard", requireAuth, async (req, res, next) => {
+    try {
+      const user = req.user as SafeUser;
+      const license = await getCurrentLicense();
+      const availableModules = getAvailableModules(user, license);
+      
+      res.json({
+        user: {
+          username: user.username,
+          fullName: user.fullName,
+          isMasterAdmin: isMasterAdmin(user),
+        },
+        availableModules,
+        license: isMasterAdmin(user) ? {
+          tenantId: license?.tenantId,
+          status: license?.lastValidationStatus,
+          expiry: license?.expiry,
+          modules: license?.modules,
+        } : null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // License admin routes (master admin only)
+  app.get("/api/admin/license", requireAuth, requireMasterAdmin, async (req, res, next) => {
+    try {
+      const license = await getCurrentLicense();
+      
+      res.json({
+        licenseKey: license?.licenseKey ? `****${license.licenseKey.slice(-8)}` : null,
+        tenantId: license?.tenantId,
+        modules: license?.modules || [],
+        expiry: license?.expiry,
+        lastValidatedAt: license?.lastValidatedAt,
+        lastValidationStatus: license?.lastValidationStatus || "NONE",
+        validationMessage: license?.validationMessage,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/license", requireAuth, requireMasterAdmin, async (req, res, next) => {
+    try {
+      const result = licenseValidateRequestSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString()
+        });
+      }
+
+      const { licenseKey } = result.data;
+      
+      // Validate with external license server
+      const validation = await validateLicenseWithServer(licenseKey);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          message: validation.error || "Failed to validate license"
+        });
+      }
+
+      if (!validation.data) {
+        return res.status(400).json({
+          message: "No response from license server"
+        });
+      }
+
+      // Save the license info
+      const updatedLicense = await saveLicenseFromValidation(licenseKey, validation.data);
+      
+      // Log license update
+      const user = req.user as SafeUser;
+      await storage.createAuditLog({
+        userId: user.id,
+        username: user.username,
+        action: "license_updated",
+        category: "settings",
+        resourceType: "license",
+        details: validation.data.valid 
+          ? `License validated successfully. Modules: ${updatedLicense.modules?.join(", ") || "none"}`
+          : `License validation failed: ${validation.data.reason}`,
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+        status: validation.data.valid ? "success" : "failure",
+      });
+
+      if (!validation.data.valid) {
+        return res.status(400).json({
+          message: `License validation failed: ${validation.data.reason}`,
+          status: updatedLicense.lastValidationStatus,
+        });
+      }
+
+      res.json({
+        message: "License updated successfully",
+        license: {
+          tenantId: updatedLicense.tenantId,
+          modules: updatedLicense.modules,
+          expiry: updatedLicense.expiry,
+          lastValidationStatus: updatedLicense.lastValidationStatus,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Module endpoint routes (protected by license)
+  app.get("/api/modules/custom-portal", requireAuth, requireModuleAccess("CUSTOM_PORTAL"), (req, res) => {
+    res.json({ 
+      module: "CUSTOM_PORTAL",
+      message: "Custom Portal module is active",
+      content: "Welcome to the Custom Portal"
+    });
+  });
+
+  app.get("/api/modules/asset-management", requireAuth, requireModuleAccess("ASSET_MANAGEMENT"), (req, res) => {
+    res.json({ 
+      module: "ASSET_MANAGEMENT",
+      message: "Asset Management module is active",
+      content: "Welcome to Asset Lifecycle Management"
+    });
+  });
+
+  app.get("/api/modules/service-desk", requireAuth, requireModuleAccess("SERVICE_DESK"), (req, res) => {
+    res.json({ 
+      module: "SERVICE_DESK",
+      message: "Service Desk module is active",
+      content: "Welcome to Service Desk"
+    });
+  });
+
+  app.get("/api/modules/epm", requireAuth, requireModuleAccess("EPM"), (req, res) => {
+    res.json({ 
+      module: "EPM",
+      message: "EPM module is active",
+      content: "Welcome to Endpoint Management"
+    });
   });
 
   // MFA Routes

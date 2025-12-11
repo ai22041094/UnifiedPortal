@@ -646,3 +646,71 @@ export const updateDatabaseSettingsSchema = insertDatabaseSettingsSchema.partial
 export type InsertDatabaseSettings = z.infer<typeof insertDatabaseSettingsSchema>;
 export type UpdateDatabaseSettings = z.infer<typeof updateDatabaseSettingsSchema>;
 export type DatabaseSettings = typeof databaseSettings.$inferSelect;
+
+// License Modules enum
+export const LICENSE_MODULES = [
+  "CUSTOM_PORTAL",
+  "ASSET_MANAGEMENT", 
+  "SERVICE_DESK",
+  "EPM"
+] as const;
+
+export type LicenseModule = typeof LICENSE_MODULES[number];
+
+// License validation status enum
+export const LICENSE_STATUS = ["OK", "EXPIRED", "INVALID", "NONE"] as const;
+export type LicenseStatus = typeof LICENSE_STATUS[number];
+
+// License Info table
+export const licenseInfo = pgTable("license_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
+  licenseKey: text("license_key"),
+  tenantId: text("tenant_id"),
+  modules: jsonb("modules").$type<LicenseModule[]>().default([]),
+  expiry: timestamp("expiry", { withTimezone: true }),
+  lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
+  lastValidationStatus: varchar("last_validation_status", { length: 20 }).default("NONE"),
+  validationMessage: text("validation_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const insertLicenseInfoSchema = createInsertSchema(licenseInfo, {
+  licenseKey: z.string().optional().nullable(),
+  tenantId: z.string().optional().nullable(),
+  modules: z.array(z.enum(LICENSE_MODULES)).default([]),
+  expiry: z.date().optional().nullable(),
+  lastValidationStatus: z.enum(LICENSE_STATUS).default("NONE"),
+  validationMessage: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  lastValidatedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateLicenseInfoSchema = insertLicenseInfoSchema.partial();
+
+export type InsertLicenseInfo = z.infer<typeof insertLicenseInfoSchema>;
+export type UpdateLicenseInfo = z.infer<typeof updateLicenseInfoSchema>;
+export type LicenseInfo = typeof licenseInfo.$inferSelect;
+
+// License validation request/response schemas
+export const licenseValidateRequestSchema = z.object({
+  licenseKey: z.string().min(1, "License key is required"),
+});
+
+export type LicenseValidateRequest = z.infer<typeof licenseValidateRequestSchema>;
+
+// External license server response
+export const licenseServerResponseSchema = z.object({
+  valid: z.boolean(),
+  reason: z.enum(["OK", "EXPIRED", "INVALID_SIGNATURE", "MALFORMED", "NOT_FOUND"]),
+  payload: z.object({
+    tenantId: z.string(),
+    modules: z.array(z.string()),
+    expiry: z.string(),
+  }).optional(),
+});
+
+export type LicenseServerResponse = z.infer<typeof licenseServerResponseSchema>;
