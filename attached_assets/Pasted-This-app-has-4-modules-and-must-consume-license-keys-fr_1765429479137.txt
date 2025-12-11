@@ -1,0 +1,167 @@
+This app has 4 modules and must consume license keys from the separate License Server described below.
+Context
+•	The external License Server exposes POST /api/licenses/validate which accepts { licenseKey } and responds with:
+•	{
+•	  valid: boolean;
+•	  reason: "OK" | "EXPIRED" | "INVALID_SIGNATURE" | "MALFORMED" | "NOT_FOUND";
+•	  payload?: {
+•	    tenantId: string;
+•	    modules: string[];
+•	    expiry: string; // ISO
+•	  };
+•	}
+•	In this client app, I want:
+o	A login system with a “master” user who bypasses license restrictions.
+o	A simple license settings page where the master can paste a license key.
+o	License to determine which of 4 modules are available:
+	CUSTOM_PORTAL
+	ASSET_MANAGEMENT
+	SERVICE_DESK
+	EPM
+o	A dashboard that shows module cards (similar to the screenshot I described), hiding disabled modules for normal users.
+Project structure
+•	Monorepo style:
+o	/server – Express + Prisma + PostgreSQL (TypeScript)
+o	/client – React + TypeScript (Vite), consuming the server API.
+Backend (Express + Prisma + PostgreSQL, TypeScript)
+Prisma models
+In schema.prisma, define:
+•	User
+o	id
+o	username (string, unique)
+o	passwordHash (string)
+o	isMasterAdmin (boolean)
+o	createdAt, updatedAt
+•	LicenseInfo (single row or treat as configuration table)
+o	id (single row used, e.g. 1)
+o	licenseKey (string)
+o	tenantId (string)
+o	modules (string[] or JSON)
+o	expiry (DateTime)
+o	lastValidatedAt (DateTime)
+o	lastValidationStatus (string enum: "OK" | "EXPIRED" | "INVALID" | "NONE")
+Seed in a script:
+•	User master with password Master123! and isMasterAdmin = true.
+•	User normal with password User123! and isMasterAdmin = false.
+•	A default LicenseInfo row with lastValidationStatus = "NONE" and no key.
+Auth & sessions
+•	Use express-session for session-based login.
+•	Use bcrypt for password hashing.
+•	Middleware:
+o	requireAuth – ensures user is logged in.
+o	requireMasterAdmin – ensures user.isMasterAdmin is true.
+•	On each request, attach req.user from the session (store user id in session).
+License service (server-side)
+Implement a licenseService.ts with functions:
+•	getCurrentLicense(): Promise<LicenseInfo | null>
+•	isLicensePresent(license: LicenseInfo | null): boolean
+•	isLicenseExpired(license: LicenseInfo | null): boolean
+•	hasModule(license: LicenseInfo | null, moduleKey: string): boolean
+•	requireModuleAccess(moduleKey: string) – returns Express middleware that:
+o	Allows if req.user.isMasterAdmin is true.
+o	Otherwise, loads current license and:
+	If missing or expired → returns 403 with "License missing or expired".
+	If module not included → returns 403 with "Module not licensed".
+License state is stored locally in PostgreSQL (LicenseInfo) and periodically updated via the License Server when the master changes the key.
+Routes
+Implement these Express routes (TypeScript):
+1.	Auth
+o	GET /api/auth/me – returns current user or null.
+o	POST /api/auth/login
+	Body: { username, password }
+	Validates user.
+	If user is not master:
+	Load LicenseInfo.
+	If no license or expired (expiry < now) or lastValidationStatus !== "OK" → reject login with message "License missing or expired. Contact administrator."
+	Master can log in regardless of license state.
+	On success, store user id in session.
+o	POST /api/auth/logout – destroys session.
+2.	License admin (master-only)
+o	GET /api/admin/license
+	requireMasterAdmin.
+	Returns current LicenseInfo.
+o	POST /api/admin/license
+	requireMasterAdmin.
+	Body: { licenseKey: string }.
+	Reads LICENSE_SERVER_URL from env.
+	Calls POST {LICENSE_SERVER_URL}/api/licenses/validate with { licenseKey } using axios.
+	If response is valid and reason === "OK":
+	Save licenseKey, tenantId, modules, expiry from payload.
+	Set lastValidatedAt = now, lastValidationStatus = "OK".
+	If invalid:
+	Do not overwrite existing valid license; return an error message and set lastValidationStatus to "INVALID" or "EXPIRED" accordingly.
+3.	Dashboard & modules
+o	GET /api/dashboard
+	requireAuth.
+	Returns:
+	user (username, isMasterAdmin)
+	For masters: availableModules = ["CUSTOM_PORTAL","ASSET_MANAGEMENT","SERVICE_DESK","EPM"]
+	For normal users: availableModules based on LicenseInfo.modules (and only if not expired).
+o	Module routes, all requireAuth + requireModuleAccess:
+	GET /api/modules/custom-portal
+	GET /api/modules/asset-management
+	GET /api/modules/service-desk
+	GET /api/modules/epm
+	For now they can just return a placeholder message like "Custom Portal content".
+Frontend (React + TypeScript, Vite)
+•	Use React Router for client-side routing.
+•	Use axios to call the backend API.
+Pages/components:
+1.	Login page – /login
+o	Simple form: username, password.
+o	On submit, POST /api/auth/login.
+o	On success, redirect to /dashboard.
+o	On failure, show server message.
+2.	Dashboard – /dashboard
+o	On mount, call GET /api/dashboard.
+o	Show:
+	Greeting (e.g. Welcome, {username}).
+	Info if user is master.
+	Display 4 module cards in a grid layout similar to:
+	Custom Portal
+	Asset Lifecycle Management
+	Service Desk
+	EPM
+o	For normal users, only render the cards listed in availableModules from the API.
+o	For master admin, show all 4 cards regardless of license.
+o	Click on a card → navigate to the corresponding module route (/modules/custom-portal, etc.).
+3.	Module pages
+o	Routes:
+	/modules/custom-portal
+	/modules/asset-management
+	/modules/service-desk
+	/modules/epm
+o	Each page:
+	On mount, calls its corresponding API route (e.g. /api/modules/custom-portal).
+	Displays the returned message or a simple placeholder UI for now.
+	If backend returns 403 due to license, show the message "Module not licensed" or "License missing or expired".
+4.	License settings page (master-only) – /admin/license
+o	On mount, call GET /api/admin/license:
+	If user is not master, backend should return 403 and front-end should redirect to /dashboard.
+	Display current license info: tenantId, modules list, expiry, lastValidationStatus.
+o	Form to paste a new licenseKey.
+o	On submit, POST /api/admin/license.
+o	If success, show updated license info.
+o	If error, show message from server.
+5.	Auth guard
+o	Add a simple React context or hook to track current user (from /api/auth/me).
+o	Protect routes so unauthenticated users get redirected to /login.
+Environment / config
+•	Backend .env example:
+o	DATABASE_URL=postgresql://user:pass@host:port/dbname
+o	SESSION_SECRET=some-secret
+o	LICENSE_SERVER_URL=http://localhost:4000 (or wherever the license server runs)
+•	Frontend .env:
+o	VITE_API_BASE_URL=http://localhost:5000 (backend URL)
+What I expect from you
+•	Generate all code for /server and /client:
+o	Prisma schema, migrations, seed script (master + normal user).
+o	Express routes & middleware as specified.
+o	React pages, routing, and API calls.
+•	At the end, provide clear instructions:
+o	How to configure PostgreSQL connection.
+o	How to run prisma migrate and seed.
+o	How to start backend and frontend on Replit.
+o	Where to set LICENSE_SERVER_URL.
+•	Ensure the code is coherent and runs with minimal manual changes.
+Please now generate the full project (server + client) code and setup instructions.
