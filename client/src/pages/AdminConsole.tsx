@@ -11,7 +11,8 @@ import {
   Bell,
   Lock,
   Database,
-  Activity
+  Activity,
+  Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -126,6 +127,17 @@ const adminMenuItems = [
     color: "text-pink-500",
     bgColor: "bg-pink-500/10",
     permission: "admin.monitoring",
+    available: true,
+  },
+  {
+    id: "license",
+    title: "License Manager",
+    description: "Manage license keys and module access",
+    icon: Key,
+    href: "/admin/license",
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    permission: "admin.license",
     available: true,
   },
 ];
