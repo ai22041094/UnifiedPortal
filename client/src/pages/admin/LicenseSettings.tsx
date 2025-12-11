@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
-import { Key, ChevronLeft, Save, Loader2, CheckCircle, AlertCircle, Clock, Package } from "lucide-react";
+import { Key, ChevronLeft, Save, Loader2, CheckCircle, AlertCircle, Clock, Package, Globe, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,11 @@ interface LicenseInfo {
   lastValidatedAt: string | null;
   lastValidationStatus: string;
   validationMessage: string | null;
+}
+
+interface LicenseServerUrlInfo {
+  configured: boolean;
+  url: string | null;
 }
 
 const licenseFormSchema = z.object({
@@ -68,6 +73,10 @@ export default function LicenseSettings() {
 
   const { data: license, isLoading } = useQuery<LicenseInfo>({
     queryKey: ["/api/admin/license"],
+  });
+
+  const { data: licenseServerUrl } = useQuery<LicenseServerUrlInfo>({
+    queryKey: ["/api/admin/license-server-url"],
   });
 
   const form = useForm<LicenseFormValues>({
@@ -140,6 +149,42 @@ export default function LicenseSettings() {
         </div>
 
         <div className="grid gap-6">
+          <Card data-testid="card-license-server-url">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                License Server URL
+              </CardTitle>
+              <CardDescription>
+                The license server URL is configured in the environment variables
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {licenseServerUrl?.configured ? (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                  <code className="text-sm font-mono flex-1" data-testid="text-license-server-url">
+                    {licenseServerUrl.url}
+                  </code>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Configured
+                  </Badge>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-md">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <span className="text-sm text-destructive" data-testid="text-license-server-not-configured">
+                    License server URL is not configured
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-3">
+                To update, set the <code className="bg-muted px-1 py-0.5 rounded">LICENSE_SERVER_URL</code> environment variable. 
+                See the documentation for details.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card data-testid="card-license-status">
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-2">

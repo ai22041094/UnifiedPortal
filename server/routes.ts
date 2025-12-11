@@ -448,6 +448,15 @@ export async function registerRoutes(
     }
   });
 
+  // License server URL endpoint (master admin only - read only)
+  app.get("/api/admin/license-server-url", requireAuth, requireMasterAdmin, async (req, res) => {
+    const licenseServerUrl = process.env.LICENSE_SERVER_URL || "";
+    res.json({
+      configured: !!licenseServerUrl,
+      url: licenseServerUrl || null,
+    });
+  });
+
   // License admin routes (master admin only)
   app.get("/api/admin/license", requireAuth, requireMasterAdmin, async (req, res, next) => {
     try {
