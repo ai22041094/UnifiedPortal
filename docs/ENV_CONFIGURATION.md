@@ -1,47 +1,105 @@
 # Environment Configuration
 
-This document describes the environment variables used by the application.
+This document describes how to configure environment variables for the PCVISOR application.
 
-## License Server Configuration
+## Quick Start
 
-### LICENSE_SERVER_URL
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-The `LICENSE_SERVER_URL` environment variable configures the URL of the license validation server.
+2. Edit `.env` and fill in your values
 
-**Purpose:** This URL is used to validate license keys entered in the License Management page.
+3. Restart the application
 
-**Format:** Full URL including protocol (http/https)
+## Environment Variables Reference
+
+### Database Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `PGHOST` | No | PostgreSQL host (alternative to DATABASE_URL) |
+| `PGPORT` | No | PostgreSQL port (default: 5432) |
+| `PGUSER` | No | PostgreSQL username |
+| `PGPASSWORD` | No | PostgreSQL password |
+| `PGDATABASE` | No | PostgreSQL database name |
+
+**Example:**
+```
+DATABASE_URL=postgresql://user:password@localhost:5432/pcvisor
+```
+
+### Session Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SESSION_SECRET` | Yes | Secret key for session encryption (min 32 chars) |
+| `TRUST_PROXY` | No | Set to `1` if behind a reverse proxy |
+
+**Generate a session secret:**
+```bash
+openssl rand -hex 32
+```
+
+### License Server Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LICENSE_SERVER_URL` | Yes | URL of the license validation server |
 
 **Example:**
 ```
 LICENSE_SERVER_URL=https://license.example.com
 ```
 
-### How to Configure
+The license server URL can be verified in the License Management page (Admin Console > License Management).
 
-1. **In Replit:**
-   - Go to the "Secrets" tab in your Replit project
-   - Add a new secret with key `LICENSE_SERVER_URL`
-   - Set the value to your license server URL
+### Push Notifications (VAPID)
 
-2. **In .env file (local development):**
-   - Create or edit the `.env` file in the project root
-   - Add the following line:
-     ```
-     LICENSE_SERVER_URL=https://your-license-server.com
-     ```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VAPID_PUBLIC_KEY` | No | VAPID public key for web push |
+| `VAPID_PRIVATE_KEY` | No | VAPID private key for web push |
+| `VAPID_SUBJECT` | No | Contact email for VAPID |
 
-3. **Restart the application** after making changes for them to take effect.
+**Generate VAPID keys:**
+```bash
+npx web-push generate-vapid-keys
+```
 
-### Verification
+### Application Settings
 
-After configuration, you can verify the setting in the License Management page:
-- Navigate to Admin Console > License Management
-- The "License Server URL" card will show the configured URL
-- If not configured, a warning message will be displayed
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 5000 | Application port |
+| `NODE_ENV` | No | development | Environment mode |
 
-### Notes
+## Deployment Notes
 
-- The license server URL is read-only in the UI for security reasons
-- Changes must be made through environment variables
-- Ensure the URL is accessible from your application server
+### Local/Self-Hosted Deployment
+
+1. Copy `.env.example` to `.env`
+2. Configure all required variables
+3. Set up PostgreSQL database
+4. Run `npm run db:push` to create database schema
+5. Run `npm run build` to build the application
+6. Run `npm run start` to start in production mode
+
+### Docker Deployment
+
+Pass environment variables via docker-compose or `-e` flags:
+```yaml
+environment:
+  - DATABASE_URL=postgresql://user:pass@db:5432/pcvisor
+  - SESSION_SECRET=your-secret-here
+  - LICENSE_SERVER_URL=https://license.example.com
+```
+
+### Security Notes
+
+- Never commit `.env` file to version control
+- Use strong, unique values for `SESSION_SECRET`
+- Rotate secrets periodically in production
+- Use HTTPS for `LICENSE_SERVER_URL` in production
