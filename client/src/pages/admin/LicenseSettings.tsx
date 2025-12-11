@@ -93,6 +93,7 @@ export default function LicenseSettings() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/license"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/license-status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       form.reset();
       toast({
