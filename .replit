@@ -54,3 +54,4 @@ expertMode = true
 TRUST_PROXY = "1"
 VAPID_PUBLIC_KEY = "BKrrzx8wDi84jKxCBe-AI7zkCZiJ7mEIEgwQVqyCgLdeupUAMFLYunGVyCJ1GbK3gFd7x9vtrP-kOjuL98xhyuI"
 VAPID_SUBJECT = "mailto:admin@pcvisor.com"
+LICENSE_SERVER_URL = "https://12d7df9a-ee3c-4f6b-afa4-9469ef053a99-00-24zohd8l8uajh.janeway.replit.dev"
