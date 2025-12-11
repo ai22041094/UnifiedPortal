@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { RBACProvider } from "@/lib/rbac";
+import { LicenseProvider } from "@/lib/license";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { LicenseGate } from "@/components/LicenseGate";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import LoginPage from "@/pages/Login";
@@ -114,32 +116,44 @@ function Router() {
       </Route>
       <Route path="/apps/custom-portal">
         <ProtectedRoute>
-          <CustomPortal />
+          <LicenseGate module="CUSTOM_PORTAL" moduleName="Custom Portal">
+            <CustomPortal />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/apps/alm">
         <ProtectedRoute>
-          <AssetManagement />
+          <LicenseGate module="ASSET_MANAGEMENT" moduleName="Asset Lifecycle Management">
+            <AssetManagement />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/apps/alm/*">
         <ProtectedRoute>
-          <AssetManagement />
+          <LicenseGate module="ASSET_MANAGEMENT" moduleName="Asset Lifecycle Management">
+            <AssetManagement />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/apps/service-desk">
         <ProtectedRoute>
-          <ServiceDesk />
+          <LicenseGate module="SERVICE_DESK" moduleName="Service Desk">
+            <ServiceDesk />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/apps/epm">
         <ProtectedRoute>
-          <EPM />
+          <LicenseGate module="EPM" moduleName="Endpoint Management">
+            <EPM />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/apps/epm/*">
         <ProtectedRoute>
-          <EPM />
+          <LicenseGate module="EPM" moduleName="Endpoint Management">
+            <EPM />
+          </LicenseGate>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboards/overview">
@@ -177,10 +191,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RBACProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <LicenseProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </LicenseProvider>
         </RBACProvider>
       </AuthProvider>
     </QueryClientProvider>

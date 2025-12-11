@@ -431,6 +431,23 @@ export async function registerRoutes(
     }
   });
 
+  // License status endpoint (accessible to all authenticated users)
+  app.get("/api/license-status", requireAuth, async (req, res, next) => {
+    try {
+      const license = await getCurrentLicense();
+      
+      res.json({
+        licenseKey: license?.licenseKey ? `****${license.licenseKey.slice(-8)}` : null,
+        tenantId: license?.tenantId,
+        modules: license?.modules || [],
+        expiry: license?.expiry,
+        lastValidationStatus: license?.lastValidationStatus || "NONE",
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // License admin routes (master admin only)
   app.get("/api/admin/license", requireAuth, requireMasterAdmin, async (req, res, next) => {
     try {
@@ -547,6 +564,67 @@ export async function registerRoutes(
       module: "EPM",
       message: "EPM module is active",
       content: "Welcome to Endpoint Management"
+    });
+  });
+
+  // Test license validation endpoint (for development/testing only)
+  app.post("/api/test/license/validate", async (req, res) => {
+    const { licenseKey } = req.body;
+    
+    // Test license keys for development
+    const TEST_LICENSES: Record<string, { tenantId: string; modules: string[]; expiry: string }> = {
+      // All modules license
+      "TEST-ALL-MODULES-2025": {
+        tenantId: "test-tenant-all",
+        modules: ["CUSTOM_PORTAL", "ASSET_MANAGEMENT", "SERVICE_DESK", "EPM"],
+        expiry: "2025-12-31T23:59:59Z",
+      },
+      // Custom Portal only
+      "TEST-PORTAL-ONLY-2025": {
+        tenantId: "test-tenant-portal",
+        modules: ["CUSTOM_PORTAL"],
+        expiry: "2025-12-31T23:59:59Z",
+      },
+      // Asset Management only
+      "TEST-ALM-ONLY-2025": {
+        tenantId: "test-tenant-alm",
+        modules: ["ASSET_MANAGEMENT"],
+        expiry: "2025-12-31T23:59:59Z",
+      },
+      // Service Desk only
+      "TEST-SD-ONLY-2025": {
+        tenantId: "test-tenant-sd",
+        modules: ["SERVICE_DESK"],
+        expiry: "2025-12-31T23:59:59Z",
+      },
+      // EPM only
+      "TEST-EPM-ONLY-2025": {
+        tenantId: "test-tenant-epm",
+        modules: ["EPM"],
+        expiry: "2025-12-31T23:59:59Z",
+      },
+      // Expired license
+      "TEST-EXPIRED-2024": {
+        tenantId: "test-tenant-expired",
+        modules: ["CUSTOM_PORTAL", "ASSET_MANAGEMENT"],
+        expiry: "2024-01-01T23:59:59Z",
+      },
+    };
+
+    const testLicense = TEST_LICENSES[licenseKey];
+    
+    if (testLicense) {
+      return res.json({
+        valid: true,
+        reason: "OK",
+        payload: testLicense,
+      });
+    }
+
+    return res.json({
+      valid: false,
+      reason: "INVALID_KEY",
+      payload: null,
     });
   });
 
