@@ -70,3 +70,17 @@ Preferred communication style: Simple, everyday language.
 - class-variance-authority
 - date-fns
 - nanoid
+
+## Test License Keys
+For testing license functionality, use the test endpoint `/api/test/license/validate`:
+
+| License Key | Modules Included |
+|-------------|-----------------|
+| `TEST-ALL-MODULES-2025` | All modules (Custom Portal, ALM, Service Desk, EPM) |
+| `TEST-PORTAL-ONLY-2025` | Custom Portal only |
+| `TEST-ALM-ONLY-2025` | Asset Management only |
+| `TEST-SD-ONLY-2025` | Service Desk only |
+| `TEST-EPM-ONLY-2025` | EPM only |
+| `TEST-EXPIRED-2024` | Expired license (for testing expiry) |
+
+**Note:** Set `LICENSE_SERVER_URL` to your app's URL (e.g., the Replit domain) + `/api/test/license` to use these test keys.
