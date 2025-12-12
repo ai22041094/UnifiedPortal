@@ -33,7 +33,11 @@ Preferred communication style: Simple, everyday language.
 ### Key Features
 - **Admin Features:** User Master (CRUD, role assignment, activation, password management), Role Master (CRUD, menu permission config), Security Settings (password policy, session timeout, MFA, IP restrictions, account lockout), Audit Logs (activity tracking, filtering, cleanup), and Notification Settings (push notifications, in-app channels).
 - **Asset Lifecycle Management (ALM) Module:** Features six dashboards (Overview, Hardware, Software, CIO, CFO, COO) with KPIs, metrics, and data visualizations.
-- **License Management System:** Controls access to modules (Custom Portal, ALM, Service Desk, EPM) based on validated license keys. Integrates with an external license server.
+- **License Management System:** Controls access to modules (Custom Portal, ALM, Service Desk, EPM) based on validated license keys. Integrates with an external license server with hardware binding.
+  - **Hardware Fingerprinting:** Licenses are bound to machine fingerprints (CPU, hostname, MAC addresses, instance ID).
+  - **Instance ID Persistence:** Stored at `/var/lib/myapp/license-instance-id` or `.license-instance-id` in CWD (fallback).
+  - **Local Validation:** Checks stored license token, hardware match, and expiration without contacting server.
+  - **Master Admin Bypass:** Users with `isSystem=true` bypass all license restrictions.
 - **Multi-Factor Authentication (MFA):** TOTP implementation with QR code setup, verification, and disabling. Integrated into login flow and protected by security features like account lockout.
 - **In-App Notifications:** Real-time notifications for various events, displayed via a NotificationBell component.
 
