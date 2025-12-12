@@ -1,7 +1,9 @@
 import { storage } from "./storage";
-import type { LicenseInfo, LicenseModule, LicenseServerResponse, SafeUser } from "@shared/schema";
-import { LICENSE_MODULES, licenseServerResponseSchema } from "@shared/schema";
+import type { LicenseInfo, LicenseModule, LicenseServerResponse, LicenseActivationResponse, SafeUser } from "@shared/schema";
+import { LICENSE_MODULES, licenseServerResponseSchema, licenseActivationResponseSchema } from "@shared/schema";
 import type { Request, Response, NextFunction } from "express";
+import { getMachineFingerprint } from "./licensing/fingerprint";
+import { validateLocalLicense, getLocalLicenseStatusMessage } from "./licensing/licenseValidator";
 
 const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || "";
 
@@ -12,8 +14,8 @@ export async function getCurrentLicense(): Promise<LicenseInfo | null> {
 
 export function isLicensePresent(license: LicenseInfo | null): boolean {
   return license !== null && 
-         license.licenseKey !== null && 
-         license.licenseKey !== "" &&
+         license.licenseToken !== null && 
+         license.licenseToken !== "" &&
          license.lastValidationStatus === "OK";
 }
 
@@ -33,6 +35,55 @@ export function hasModule(license: LicenseInfo | null, moduleKey: LicenseModule)
 
 export function isMasterAdmin(user: SafeUser | undefined): boolean {
   return user?.isSystem === true;
+}
+
+export async function activateLicenseWithServer(licenseKey: string): Promise<{
+  success: boolean;
+  data?: LicenseActivationResponse;
+  error?: string;
+}> {
+  if (!LICENSE_SERVER_URL) {
+    return { 
+      success: false, 
+      error: "License server URL not configured" 
+    };
+  }
+
+  try {
+    const hardwareId = getMachineFingerprint();
+    
+    const response = await fetch(`${LICENSE_SERVER_URL}/api/licenses/activate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ licenseKey, hardwareId }),
+    });
+
+    if (!response.ok) {
+      return { 
+        success: false, 
+        error: `License server returned status ${response.status}` 
+      };
+    }
+
+    const rawData = await response.json();
+    const parsed = licenseActivationResponseSchema.safeParse(rawData);
+    
+    if (!parsed.success) {
+      return { 
+        success: false, 
+        error: "Invalid response from license server" 
+      };
+    }
+
+    return { success: true, data: parsed.data };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to contact license server" 
+    };
+  }
 }
 
 export async function validateLicenseWithServer(licenseKey: string): Promise<{
@@ -79,6 +130,45 @@ export async function validateLicenseWithServer(licenseKey: string): Promise<{
       success: false, 
       error: error instanceof Error ? error.message : "Failed to contact license server" 
     };
+  }
+}
+
+export async function saveLicenseFromActivation(
+  licenseKey: string,
+  activationResponse: LicenseActivationResponse
+): Promise<LicenseInfo> {
+  if (activationResponse.ok && activationResponse.token && activationResponse.payload) {
+    const validModules = activationResponse.payload.modules.filter(
+      (m): m is LicenseModule => LICENSE_MODULES.includes(m as LicenseModule)
+    );
+
+    return await storage.updateLicenseInfo({
+      licenseKey,
+      licenseToken: activationResponse.token,
+      tenantId: activationResponse.payload.tenantId,
+      hardwareId: activationResponse.payload.hardwareId,
+      modules: validModules,
+      expiry: new Date(activationResponse.payload.expiry),
+      lastValidationStatus: "OK",
+      validationMessage: "License activated and bound to this machine",
+    });
+  } else {
+    const existingLicense = await getCurrentLicense();
+    
+    if (existingLicense && existingLicense.lastValidationStatus === "OK") {
+      return existingLicense;
+    }
+
+    return await storage.updateLicenseInfo({
+      licenseKey: null,
+      licenseToken: null,
+      tenantId: null,
+      hardwareId: null,
+      modules: [],
+      expiry: null,
+      lastValidationStatus: "INVALID",
+      validationMessage: `License activation failed: ${activationResponse.reason || "Unknown error"}`,
+    });
   }
 }
 
@@ -134,21 +224,15 @@ export function requireModuleAccess(moduleKey: LicenseModule) {
       return next();
     }
 
-    const license = await getCurrentLicense();
+    const localStatus = await validateLocalLicense();
 
-    if (!isLicensePresent(license)) {
+    if (!localStatus.ok) {
       return res.status(403).json({ 
-        message: "License missing or invalid. Contact administrator." 
+        message: getLocalLicenseStatusMessage(localStatus.reason)
       });
     }
 
-    if (isLicenseExpired(license)) {
-      return res.status(403).json({ 
-        message: "License has expired. Contact administrator." 
-      });
-    }
-
-    if (!hasModule(license, moduleKey)) {
+    if (!localStatus.payload.modules.includes(moduleKey)) {
       return res.status(403).json({ 
         message: `Module "${moduleKey}" is not licensed. Contact administrator.` 
       });
@@ -180,19 +264,12 @@ export async function checkLicenseForLogin(user: SafeUser): Promise<{
     return { allowed: true };
   }
 
-  const license = await getCurrentLicense();
+  const localStatus = await validateLocalLicense();
 
-  if (!isLicensePresent(license)) {
+  if (!localStatus.ok) {
     return { 
       allowed: false, 
-      message: "License missing or invalid. Contact administrator." 
-    };
-  }
-
-  if (isLicenseExpired(license)) {
-    return { 
-      allowed: false, 
-      message: "License has expired. Contact administrator." 
+      message: getLocalLicenseStatusMessage(localStatus.reason)
     };
   }
 
@@ -210,3 +287,5 @@ export function getAvailableModules(user: SafeUser, license: LicenseInfo | null)
 
   return (license?.modules as LicenseModule[]) || [];
 }
+
+export { getMachineFingerprint };

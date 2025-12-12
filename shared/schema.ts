@@ -665,7 +665,9 @@ export type LicenseStatus = typeof LICENSE_STATUS[number];
 export const licenseInfo = pgTable("license_info", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),
   licenseKey: text("license_key"),
+  licenseToken: text("license_token"),
   tenantId: text("tenant_id"),
+  hardwareId: text("hardware_id"),
   modules: jsonb("modules").$type<LicenseModule[]>().default([]),
   expiry: timestamp("expiry", { withTimezone: true }),
   lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
@@ -677,7 +679,9 @@ export const licenseInfo = pgTable("license_info", {
 
 export const insertLicenseInfoSchema = createInsertSchema(licenseInfo, {
   licenseKey: z.string().optional().nullable(),
+  licenseToken: z.string().optional().nullable(),
   tenantId: z.string().optional().nullable(),
+  hardwareId: z.string().optional().nullable(),
   modules: z.array(z.enum(LICENSE_MODULES)).default([]),
   expiry: z.date().optional().nullable(),
   lastValidationStatus: z.enum(LICENSE_STATUS).default("NONE"),
@@ -702,7 +706,7 @@ export const licenseValidateRequestSchema = z.object({
 
 export type LicenseValidateRequest = z.infer<typeof licenseValidateRequestSchema>;
 
-// External license server response
+// External license server response (for validation)
 export const licenseServerResponseSchema = z.object({
   valid: z.boolean(),
   reason: z.enum(["OK", "EXPIRED", "INVALID_SIGNATURE", "MALFORMED", "NOT_FOUND"]),
@@ -714,3 +718,33 @@ export const licenseServerResponseSchema = z.object({
 });
 
 export type LicenseServerResponse = z.infer<typeof licenseServerResponseSchema>;
+
+// License activation response schema (for /api/licenses/activate)
+export const licenseActivationResponseSchema = z.object({
+  ok: z.boolean(),
+  reason: z.string().optional(),
+  token: z.string().optional(),
+  payload: z.object({
+    tenantId: z.string(),
+    modules: z.array(z.string()),
+    expiry: z.string(),
+    hardwareId: z.string(),
+    publicIp: z.string().optional(),
+  }).optional(),
+});
+
+export type LicenseActivationResponse = z.infer<typeof licenseActivationResponseSchema>;
+
+// License payload interface for local validation
+export interface LicensePayload {
+  tenantId: string;
+  modules: string[];
+  expiry: string;
+  hardwareId: string;
+  publicIp?: string;
+}
+
+// Local license validation status
+export type LocalLicenseStatus =
+  | { ok: true; payload: LicensePayload }
+  | { ok: false; reason: "NO_LICENSE" | "INVALID" | "EXPIRED" | "HARDWARE_MISMATCH" };

@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
 import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, type SafeUser, type InsertProcessDetails, type LicenseModule } from "@shared/schema";
 import webPush from "web-push";
-import { checkLicenseForLogin, getCurrentLicense, getAvailableModules, requireMasterAdmin, requireModuleAccess, validateLicenseWithServer, saveLicenseFromValidation, isMasterAdmin } from "./license";
+import { checkLicenseForLogin, getCurrentLicense, getAvailableModules, requireMasterAdmin, requireModuleAccess, validateLicenseWithServer, saveLicenseFromValidation, activateLicenseWithServer, saveLicenseFromActivation, isMasterAdmin, getMachineFingerprint } from "./license";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
 import crypto from "crypto";
@@ -457,16 +457,28 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/admin/machine-info", requireAuth, requireMasterAdmin, async (req, res) => {
+    const fingerprint = getMachineFingerprint();
+    res.json({
+      hardwareId: fingerprint,
+      hardwareIdPreview: `${fingerprint.slice(0, 16)}...${fingerprint.slice(-8)}`,
+    });
+  });
+
   // License admin routes (master admin only)
   app.get("/api/admin/license", requireAuth, requireMasterAdmin, async (req, res, next) => {
     try {
       const license = await getCurrentLicense();
+      const currentHardwareId = getMachineFingerprint();
       
       res.json({
         licenseKey: license?.licenseKey ? `****${license.licenseKey.slice(-8)}` : null,
         tenantId: license?.tenantId,
         modules: license?.modules || [],
         expiry: license?.expiry,
+        hardwareId: license?.hardwareId ? `${license.hardwareId.slice(0, 16)}...` : null,
+        currentHardwareId: `${currentHardwareId.slice(0, 16)}...`,
+        hardwareMatch: license?.hardwareId ? license.hardwareId === currentHardwareId : null,
         lastValidatedAt: license?.lastValidatedAt,
         lastValidationStatus: license?.lastValidationStatus || "NONE",
         validationMessage: license?.validationMessage,
@@ -488,53 +500,65 @@ export async function registerRoutes(
 
       const { licenseKey } = result.data;
       
-      // Validate with external license server
-      const validation = await validateLicenseWithServer(licenseKey);
+      const activation = await activateLicenseWithServer(licenseKey);
       
-      if (!validation.success) {
+      if (!activation.success) {
         return res.status(400).json({
-          message: validation.error || "Failed to validate license"
+          message: activation.error || "Failed to activate license"
         });
       }
 
-      if (!validation.data) {
+      if (!activation.data) {
         return res.status(400).json({
           message: "No response from license server"
         });
       }
 
-      // Save the license info
-      const updatedLicense = await saveLicenseFromValidation(licenseKey, validation.data);
+      if (!activation.data.ok) {
+        const user = req.user as SafeUser;
+        await storage.createAuditLog({
+          userId: user.id,
+          username: user.username,
+          action: "license_activation_failed",
+          category: "settings",
+          resourceType: "license",
+          details: `License activation failed: ${activation.data.reason}`,
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          status: "failure",
+        });
+
+        return res.status(400).json({
+          ok: false,
+          reason: activation.data.reason,
+          message: `License activation failed: ${activation.data.reason}`,
+        });
+      }
+
+      const updatedLicense = await saveLicenseFromActivation(licenseKey, activation.data);
       
-      // Log license update
       const user = req.user as SafeUser;
       await storage.createAuditLog({
         userId: user.id,
         username: user.username,
-        action: "license_updated",
+        action: "license_activated",
         category: "settings",
         resourceType: "license",
-        details: validation.data.valid 
-          ? `License validated successfully. Modules: ${updatedLicense.modules?.join(", ") || "none"}`
-          : `License validation failed: ${validation.data.reason}`,
+        details: `License activated successfully. Modules: ${updatedLicense.modules?.join(", ") || "none"}. Hardware ID: ${updatedLicense.hardwareId?.slice(0, 16)}...`,
         ipAddress: req.ip || null,
         userAgent: req.headers["user-agent"] || null,
-        status: validation.data.valid ? "success" : "failure",
+        status: "success",
       });
 
-      if (!validation.data.valid) {
-        return res.status(400).json({
-          message: `License validation failed: ${validation.data.reason}`,
-          status: updatedLicense.lastValidationStatus,
-        });
-      }
-
       res.json({
-        message: "License updated successfully",
+        ok: true,
+        message: "License activated successfully",
+        payload: activation.data.payload,
         license: {
           tenantId: updatedLicense.tenantId,
           modules: updatedLicense.modules,
           expiry: updatedLicense.expiry,
+          hardwareId: updatedLicense.hardwareId,
           lastValidationStatus: updatedLicense.lastValidationStatus,
         },
       });

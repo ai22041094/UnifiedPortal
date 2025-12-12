@@ -4,10 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
-import { Key, ChevronLeft, Save, Loader2, CheckCircle, AlertCircle, Clock, Package, Globe, AlertTriangle } from "lucide-react";
+import { Key, ChevronLeft, Save, Loader2, CheckCircle, AlertCircle, Clock, Package, Globe, AlertTriangle, Cpu, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
@@ -30,6 +29,9 @@ interface LicenseInfo {
   tenantId: string | null;
   modules: string[];
   expiry: string | null;
+  hardwareId: string | null;
+  currentHardwareId: string;
+  hardwareMatch: boolean | null;
   lastValidatedAt: string | null;
   lastValidationStatus: string;
   validationMessage: string | null;
@@ -38,6 +40,26 @@ interface LicenseInfo {
 interface LicenseServerUrlInfo {
   configured: boolean;
   url: string | null;
+}
+
+interface ActivationResponse {
+  ok: boolean;
+  reason?: string;
+  message: string;
+  payload?: {
+    tenantId: string;
+    modules: string[];
+    expiry: string;
+    hardwareId: string;
+    publicIp?: string;
+  };
+  license?: {
+    tenantId: string;
+    modules: string[];
+    expiry: string;
+    hardwareId: string;
+    lastValidationStatus: string;
+  };
 }
 
 const licenseFormSchema = z.object({
@@ -53,7 +75,11 @@ const MODULE_LABELS: Record<string, string> = {
   EPM: "Endpoint Management",
 };
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, hardwareMatch: boolean | null) {
+  if (status === "OK" && hardwareMatch === false) {
+    return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"><AlertTriangle className="w-3 h-3 mr-1" />Hardware Mismatch</Badge>;
+  }
+  
   switch (status) {
     case "OK":
       return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"><CheckCircle className="w-3 h-3 mr-1" />Valid</Badge>;
@@ -89,22 +115,32 @@ export default function LicenseSettings() {
   const updateLicenseMutation = useMutation({
     mutationFn: async (data: LicenseFormValues) => {
       const response = await apiRequest("POST", "/api/admin/license", data);
-      return response;
+      return await response.json() as ActivationResponse;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: ActivationResponse) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/license"] });
       queryClient.invalidateQueries({ queryKey: ["/api/license-status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       form.reset();
-      toast({
-        title: "License Updated",
-        description: data.message || "License has been validated and saved successfully.",
-      });
+      
+      if (data.ok) {
+        toast({
+          title: "License Activated",
+          description: data.message || "License has been activated and bound to this machine.",
+        });
+      } else {
+        toast({
+          title: "Activation Failed",
+          description: data.reason || data.message || "Failed to activate license",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: any) => {
+      const errorData = error?.data || error;
       toast({
-        title: "Validation Failed",
-        description: error.message || "Failed to validate license key",
+        title: "Activation Failed",
+        description: errorData?.reason || errorData?.message || error.message || "Failed to activate license key",
         variant: "destructive",
       });
     },
@@ -180,9 +216,60 @@ export default function LicenseSettings() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-3">
-                To update, set the <code className="bg-muted px-1 py-0.5 rounded">LICENSE_SERVER_URL</code> environment variable. 
-                See the documentation for details.
+                To update, set the <code className="bg-muted px-1 py-0.5 rounded">LICENSE_SERVER_URL</code> environment variable.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-machine-info">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cpu className="h-5 w-5" />
+                Machine Information
+              </CardTitle>
+              <CardDescription>
+                Hardware fingerprint used for license binding
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Current Machine ID</p>
+                  <code className="text-sm font-mono" data-testid="text-current-hardware-id">
+                    {license?.currentHardwareId || "Unknown"}
+                  </code>
+                </div>
+                {license?.hardwareId && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Licensed Machine ID</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-sm font-mono" data-testid="text-licensed-hardware-id">
+                        {license.hardwareId}
+                      </code>
+                      {license.hardwareMatch === true && (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Match
+                        </Badge>
+                      )}
+                      {license.hardwareMatch === false && (
+                        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Mismatch
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {license?.hardwareMatch === false && (
+                <div className="p-3 bg-destructive/10 rounded-md">
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    License is bound to a different machine. Please re-activate if you have available activations.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -190,7 +277,7 @@ export default function LicenseSettings() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-2">
                 <span>Current License Status</span>
-                {license && getStatusBadge(license.lastValidationStatus)}
+                {license && getStatusBadge(license.lastValidationStatus, license.hardwareMatch)}
               </CardTitle>
               <CardDescription>
                 View your current license information and enabled modules
@@ -262,9 +349,9 @@ export default function LicenseSettings() {
 
           <Card data-testid="card-update-license">
             <CardHeader>
-              <CardTitle>Update License</CardTitle>
+              <CardTitle>Activate License</CardTitle>
               <CardDescription>
-                Enter a new license key to update your module access. The key will be validated with the license server.
+                Enter a license key to activate. The license will be bound to this machine's hardware ID.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -285,7 +372,7 @@ export default function LicenseSettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Paste the complete license key provided by your administrator
+                          Paste the complete license key provided by your administrator. This will bind the license to this machine.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -296,17 +383,17 @@ export default function LicenseSettings() {
                     <Button
                       type="submit"
                       disabled={updateLicenseMutation.isPending}
-                      data-testid="button-validate-license"
+                      data-testid="button-activate-license"
                     >
                       {updateLicenseMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Validating...
+                          Activating...
                         </>
                       ) : (
                         <>
                           <Save className="mr-2 h-4 w-4" />
-                          Validate & Save
+                          Activate License
                         </>
                       )}
                     </Button>

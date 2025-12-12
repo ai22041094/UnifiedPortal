@@ -1,0 +1,264 @@
+You are an expert TypeScript / Node / React / Prisma developer.
+I already have a client app built with:
+
+Backend: Node.js + Express + TypeScript
+
+DB: PostgreSQL via Prisma
+
+Frontend: React + TypeScript (Vite)
+
+There is a working login system with:
+
+User table (with isMasterAdmin)
+
+LicenseInfo table storing the current license key, modules, expiry, lastValidationStatus, etc.
+
+The master admin can go to a License Settings page, paste a license key, and currently we call the License Server’s /api/licenses/validate endpoint.
+
+I now have a new endpoint on the License Server:
+
+POST /api/licenses/activate
+Body: { licenseKey: string, hardwareId: string }
+Response:
+{
+  ok: boolean;
+  reason?: string;
+  token?: string;     // machine-bound license token
+  payload?: {
+    tenantId: string;
+    modules: string[];
+    expiry: string;
+    hardwareId: string;
+    publicIp?: string;
+  };
+}
+
+
+I want you to extend my existing client app with:
+
+A machine fingerprint (hardwareId) that works on host and in Docker.
+
+An activation flow that calls /api/licenses/activate instead of /validate.
+
+Local checks that bind the installation to this hardwareId and prevent reuse on another machine.
+
+Existing master login bypass must continue to work.
+
+1. Machine fingerprint utility (backend)
+
+Create a reusable helper in the backend, e.g. src/licensing/fingerprint.ts:
+
+Use Node’s os, fs, path, and crypto modules.
+
+Collect:
+
+os.platform()
+
+os.arch()
+
+os.hostname()
+
+CPU models from os.cpus()
+
+Non-internal MAC addresses from os.networkInterfaces()
+
+Add a persistent instance ID stored on disk:
+
+Path: read from env LICENSE_INSTANCE_FILE, default /var/lib/myapp/license-instance-id.
+
+If file exists, read and reuse the value.
+
+If it does not exist, generate a crypto.randomUUID(), create parent directories, and write it to the file.
+
+Combine all that data into an object, JSON-stringify it, sort arrays so the result is stable, and compute a SHA-256 hash.
+
+Export:
+
+export function getMachineFingerprint(): string;
+
+
+This must work:
+
+On bare metal (where /var/lib/myapp is a normal folder).
+
+In Docker, as long as /var/lib/myapp is mounted as a volume.
+
+2. License verification helper (backend)
+
+Add a file like src/licensing/licenseValidator.ts that:
+
+Imports getMachineFingerprint() and the existing verifyLicenseToken helper (the same JWT/HMAC logic as on the license server).
+
+Loads the saved license token from the DB (from the existing LicenseInfo record).
+
+Implements:
+
+export type LocalLicenseStatus =
+  | { ok: true; payload: LicensePayload }
+  | { ok: false; reason: "NO_LICENSE" | "INVALID" | "EXPIRED" | "HARDWARE_MISMATCH" };
+
+export async function validateLocalLicense(): Promise<LocalLicenseStatus> {
+  // 1. Load LicenseInfo row from Prisma
+  // 2. If no licenseKey, return { ok: false, reason: "NO_LICENSE" }
+  // 3. Call verifyLicenseToken(storedToken)
+  // 4. If invalid, return { ok: false, reason: "INVALID" }
+  // 5. Compare new Date(payload.expiry) with now; if past, return { ok: false, reason: "EXPIRED" }
+  // 6. Compute currentFingerPrint = getMachineFingerprint();
+  //    If payload.hardwareId !== currentFingerPrint, return { ok: false, reason: "HARDWARE_MISMATCH" }
+  // 7. If all good, return { ok: true, payload }
+}
+
+
+Here LicensePayload should match what the license server uses:
+
+interface LicensePayload {
+  tenantId: string;
+  modules: string[];
+  expiry: string;
+  hardwareId: string;
+  publicIp?: string;
+}
+
+
+You can optionally also update the LicenseInfo row with decoded tenantId, modules, expiry whenever needed.
+
+3. Change the License Settings flow (master admin)
+
+In the backend route that currently handles updating license (e.g. src/routes/licenseRoutes.ts or similar):
+
+This route is already requireMasterAdmin.
+
+Change it to:
+
+Read licenseKey from body.
+
+Compute hardwareId using getMachineFingerprint().
+
+Read LICENSE_SERVER_URL from env.
+
+Call POST {LICENSE_SERVER_URL}/api/licenses/activate with:
+
+{ licenseKey, hardwareId }
+
+
+via axios or node-fetch.
+
+If the response is { ok: true }:
+
+Get token and payload from the response.
+
+Update the single LicenseInfo row:
+
+licenseKey = the machine-bound token (token from server, not the raw key).
+
+tenantId = payload.tenantId
+
+modules = payload.modules
+
+expiry = payload.expiry (as Date)
+
+lastValidatedAt = now
+
+lastValidationStatus = "OK"
+
+Return success with the decoded payload to the frontend.
+
+If { ok: false }:
+
+Do not overwrite any existing valid license.
+
+Optionally set lastValidationStatus to "INVALID" or "EXPIRED" based on reason.
+
+Return an error with the reason to the frontend.
+
+On the React side (/admin/license page):
+
+Continue using the existing form and API.
+
+Adjust the TypeScript types to handle the { ok, reason, payload } response.
+
+Show the server’s error message if activation fails (e.g. "MAX_ACTIVATIONS_REACHED", "INVALID_LICENSE", etc.).
+
+4. Enforce license at login & for modules
+
+You already have:
+
+Master user bypass logic.
+
+Middleware like requireAuth and a license-based requireModuleAccess.
+
+Please integrate the local license validation as follows:
+
+Login route
+
+In POST /api/auth/login (or equivalent):
+
+After validating username/password and loading the User:
+
+If user.isMasterAdmin is true, allow login without checking license (keep current behavior).
+
+If user.isMasterAdmin is false:
+
+Call validateLocalLicense().
+
+If ok === false, reject login with an appropriate message:
+
+NO_LICENSE or INVALID → "License missing or invalid. Contact administrator."
+
+EXPIRED → "License expired. Contact administrator."
+
+HARDWARE_MISMATCH → "License is bound to a different machine."
+
+Module access middleware
+
+You probably already have something like requireModuleAccess(moduleKey) middleware.
+Update it to:
+
+Allow immediately if req.user.isMasterAdmin is true.
+
+Otherwise:
+
+Call validateLocalLicense() again (or re-use a cached result on the request).
+
+If not ok, return 403 with the reason text.
+
+If ok, check if payload.modules contains the given moduleKey.
+
+If not, 403 "Module not licensed".
+
+Use this middleware on:
+
+/api/modules/custom-portal
+
+/api/modules/asset-management
+
+/api/modules/service-desk
+
+/api/modules/epm
+
+The frontend already handles showing/hiding cards based on available modules; keep that behavior but now it’s enforced server-side with hardware binding.
+
+5. Environment / Docker note
+
+Add LICENSE_INSTANCE_FILE to .env with default /var/lib/myapp/license-instance-id if not set.
+
+When running in Docker, instruct that a volume should be mounted to /var/lib/myapp so the instance file survives container restarts:
+
+docker run -v myapp-data:/var/lib/myapp ...
+
+
+This ensures the hardware ID is stable across container recreations on the same host but different when moved to another host.
+
+6. Deliverables
+
+Please:
+
+Modify the existing backend code:
+
+Add fingerprint.ts and licenseValidator.ts.
+
+Wire validateLocalLicense() into login and module authorization.
+
+Update the master-only license admin route to call /api/licenses/activate.
+
+Modify the React license settings page to work with the new activation response.
