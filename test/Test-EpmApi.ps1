@@ -57,6 +57,17 @@ function Write-Info {
     Write-Host "[INFO] $Message" -ForegroundColor Yellow
 }
 
+function Remove-NullProperties {
+    param([hashtable]$InputHash)
+    $cleanHash = @{}
+    foreach ($key in $InputHash.Keys) {
+        if ($null -ne $InputHash[$key]) {
+            $cleanHash[$key] = $InputHash[$key]
+        }
+    }
+    return $cleanHash
+}
+
 function Send-ProcessDetails {
     param(
         [Parameter(Mandatory=$true)]
@@ -65,11 +76,12 @@ function Send-ProcessDetails {
     
     $endpoint = "$BaseUrl/api/external/epm/process-details"
     $headers = @{
-        "Content-Type" = "application/json"
+        "Content-Type" = "application/json; charset=utf-8"
         "x-api-key" = $ApiKey
     }
     
-    $body = $ProcessData | ConvertTo-Json -Depth 10
+    $cleanData = Remove-NullProperties -InputHash $ProcessData
+    $body = $cleanData | ConvertTo-Json -Depth 10 -Compress
     
     if ($ShowVerbose) {
         Write-Info "Sending to: $endpoint"
@@ -120,8 +132,6 @@ $testData1 = @{
     StartTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     Eventdt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     IdleStatus = 0
-    Urlname = $null
-    UrlDomain = $null
     TimeLapsed = 120
     tag1 = "productivity"
     tag2 = "editor"
@@ -182,7 +192,6 @@ $testData3 = @{
     IdleStatus = 1
     TimeLapsed = 600
     tag1 = "system"
-    tag2 = $null
 }
 
 $result3 = Send-ProcessDetails -ProcessData $testData3
