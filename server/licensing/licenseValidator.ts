@@ -41,6 +41,31 @@ export async function validateLocalLicense(): Promise<LocalLicenseStatus> {
       return { ok: false, reason: "NO_LICENSE" };
     }
 
+    // Check if the license status is OK (activated successfully via server)
+    if (licenseInfo.lastValidationStatus === "OK") {
+      // Validate expiry
+      if (licenseInfo.expiry && new Date(licenseInfo.expiry) < new Date()) {
+        return { ok: false, reason: "EXPIRED" };
+      }
+
+      // Validate hardware ID match
+      const currentFingerprint = getMachineFingerprint();
+      if (licenseInfo.hardwareId && licenseInfo.hardwareId !== currentFingerprint) {
+        return { ok: false, reason: "HARDWARE_MISMATCH" };
+      }
+
+      // Build payload from stored license info
+      const payload: LicensePayload = {
+        tenantId: licenseInfo.tenantId || "",
+        modules: (licenseInfo.modules as string[]) || [],
+        expiry: licenseInfo.expiry?.toISOString() || "",
+        hardwareId: licenseInfo.hardwareId || currentFingerprint,
+      };
+
+      return { ok: true, payload };
+    }
+
+    // Try to verify using signed token (legacy approach)
     const payload = verifyLicenseToken(licenseInfo.licenseToken);
     
     if (!payload) {
