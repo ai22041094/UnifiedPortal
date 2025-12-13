@@ -1,3 +1,24 @@
+<#        
+    .SYNOPSIS
+     A brief summary of the commands in the file.
+
+    .DESCRIPTION
+    A detailed description of the commands in the file.
+
+    .NOTES
+    ========================================================================
+         Windows PowerShell Source File 
+         Created with SAPIEN Technologies PrimalScript 2022
+         
+         NAME: 
+         
+         AUTHOR: HP , HP Inc.
+         DATE  : 13-12-2025
+         
+         COMMENT: 
+         
+    ==========================================================================
+#>
 # EPM API Test Script for pcvisor
 # This script tests the EPM Process Details POST API endpoint
 
@@ -5,11 +26,11 @@ param(
     [Parameter(Mandatory=$false)]
     [string]$BaseUrl = "https://a6ecdc4c-4f8d-45b3-b9b4-e981fc7b3a5c-00-16u2wiw3rjf0k.spock.replit.dev",
     
-    [Parameter(Mandatory=$true)]
-    [string]$ApiKey,
+    [Parameter(Mandatory=$false)]
+    [string]$ApiKey = "pcv_68c7ced2f29c1fe022b7f2df464beeb4cf1a92ef267ffcf60a09c6bbefec35c0",
     
     [Parameter(Mandatory=$false)]
-    [switch]$Verbose
+    [switch]$ShowVerbose
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +47,7 @@ function Write-Success {
     Write-Host "[SUCCESS] $Message" -ForegroundColor Green
 }
 
-function Write-Error {
+function Write-ErrorMsg {
     param([string]$Message)
     Write-Host "[ERROR] $Message" -ForegroundColor Red
 }
@@ -50,7 +71,7 @@ function Send-ProcessDetails {
     
     $body = $ProcessData | ConvertTo-Json -Depth 10
     
-    if ($Verbose) {
+    if ($ShowVerbose) {
         Write-Info "Sending to: $endpoint"
         Write-Info "Request Body:"
         Write-Host $body -ForegroundColor Gray
@@ -103,7 +124,7 @@ $testData1 = @{
     UrlDomain = $null
     TimeLapsed = 120
     tag1 = "productivity"
-    Tag2 = "editor"
+    tag2 = "editor"
 }
 
 $result1 = Send-ProcessDetails -ProcessData $testData1
@@ -113,7 +134,7 @@ if ($result1.Success) {
     Write-Info "Response: $($result1.Response | ConvertTo-Json -Compress)"
 }
 else {
-    Write-Error "Failed to send basic process details"
+    Write-ErrorMsg "Failed to send basic process details"
     Write-Info "Status Code: $($result1.StatusCode)"
     Write-Info "Error: $($result1.Error | ConvertTo-Json -Compress)"
 }
@@ -133,7 +154,7 @@ $testData2 = @{
     UrlDomain = "google.com"
     TimeLapsed = 300
     tag1 = "browser"
-    Tag2 = "search"
+    tag2 = "search"
 }
 
 $result2 = Send-ProcessDetails -ProcessData $testData2
@@ -143,7 +164,7 @@ if ($result2.Success) {
     Write-Info "Response: $($result2.Response | ConvertTo-Json -Compress)"
 }
 else {
-    Write-Error "Failed to send browser process details"
+    Write-ErrorMsg "Failed to send browser process details"
     Write-Info "Status Code: $($result2.StatusCode)"
     Write-Info "Error: $($result2.Error | ConvertTo-Json -Compress)"
 }
@@ -156,12 +177,12 @@ $testData3 = @{
     ProcessId = "9999"
     ProcessName = "explorer.exe"
     MainWindowTitle = "Windows Explorer"
-    StartTime = (Get-Date).ToString("dd MMMM yyyy HH:mm:ss")
-    Eventdt = (Get-Date).ToString("dd MMMM yyyy HH:mm:ss")
+    StartTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    Eventdt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     IdleStatus = 1
-    TimeLapsed = "600"
+    TimeLapsed = 600
     tag1 = "system"
-    Tag2 = $null
+    tag2 = $null
 }
 
 $result3 = Send-ProcessDetails -ProcessData $testData3
@@ -171,7 +192,7 @@ if ($result3.Success) {
     Write-Info "Response: $($result3.Response | ConvertTo-Json -Compress)"
 }
 else {
-    Write-Error "Failed to send idle process details"
+    Write-ErrorMsg "Failed to send idle process details"
     Write-Info "Status Code: $($result3.StatusCode)"
     Write-Info "Error: $($result3.Error | ConvertTo-Json -Compress)"
 }
@@ -189,7 +210,7 @@ if ($result4.Success) {
     Write-Info "Response: $($result4.Response | ConvertTo-Json -Compress)"
 }
 else {
-    Write-Error "Failed to send minimal process details"
+    Write-ErrorMsg "Failed to send minimal process details"
     Write-Info "Status Code: $($result4.StatusCode)"
     Write-Info "Error: $($result4.Error | ConvertTo-Json -Compress)"
 }
@@ -205,13 +226,18 @@ $result5 = Send-ProcessDetails -ProcessData $testData5
 
 if (-not $result5.Success -and $result5.StatusCode -eq 400) {
     Write-Success "Validation correctly rejected missing taskguid"
-    Write-Info "Error message: $($result5.Error.message)"
+    $errorMsg = if ($result5.Error -is [PSCustomObject] -and $result5.Error.message) { 
+        $result5.Error.message 
+    } else { 
+        $result5.Error | ConvertTo-Json -Compress 
+    }
+    Write-Info "Error message: $errorMsg"
 }
 elseif ($result5.Success) {
-    Write-Error "Expected validation error but request succeeded"
+    Write-ErrorMsg "Expected validation error but request succeeded"
 }
 else {
-    Write-Error "Unexpected error: $($result5.Error | ConvertTo-Json -Compress)"
+    Write-ErrorMsg "Unexpected error: $($result5.Error | ConvertTo-Json -Compress)"
 }
 
 Write-Header "Test Summary"
