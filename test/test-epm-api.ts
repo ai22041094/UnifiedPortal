@@ -84,7 +84,7 @@ async function runTests() {
   writeHeader('Test 1: Basic Process Details');
   const testData1: ProcessData = {
     taskguid: generateUUID(),
-    agentGuid: generateUUID(),
+    agentGuid: '12345678901234567890123456',
     ProcessId: '1234',
     ProcessName: 'notepad.exe',
     MainWindowTitle: 'Untitled - Notepad',
@@ -112,7 +112,7 @@ async function runTests() {
   writeHeader('Test 2: Browser Process with URL');
   const testData2: ProcessData = {
     taskguid: generateUUID(),
-    agentGuid: generateUUID(),
+    agentGuid: '98765432109876543210987654',
     ProcessId: '5678',
     ProcessName: 'chrome.exe',
     MainWindowTitle: 'Google - Google Chrome',
@@ -140,7 +140,7 @@ async function runTests() {
   writeHeader('Test 3: Idle Status Process');
   const testData3: ProcessData = {
     taskguid: generateUUID(),
-    agentGuid: generateUUID(),
+    agentGuid: '11111111111111111111111111',
     ProcessId: '9999',
     ProcessName: 'explorer.exe',
     MainWindowTitle: 'Windows Explorer',
