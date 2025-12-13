@@ -192,7 +192,7 @@ export type ApiKey = typeof epmApiKeys.$inferSelect;
 
 // External payload schema for process details ingestion (maps external field names to internal)
 export const externalProcessDetailsSchema = z.object({
-  taskguid: z.string().max(50),
+  taskguid: z.string().min(1, "taskguid is required").max(50),
   agentGuid: z.string().optional().nullable(),
   ProcessId: z.string().max(100).optional().nullable(),
   ProcessName: z.string().max(500).optional().nullable(),
