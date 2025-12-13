@@ -237,6 +237,7 @@ interface DashboardStatsData {
 }
 
 function DashboardContent() {
+  const [, navigate] = useLocation();
   const { data: stats, isLoading } = useQuery<DashboardStatsData>({
     queryKey: ["/api/epm/dashboard-stats"],
   });
@@ -400,19 +401,19 @@ function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="justify-start gap-2" data-testid="button-generate-report">
+              <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/apps/epm/reports/productivity")} data-testid="button-generate-report">
                 <FileText className="h-4 w-4" />
                 Generate Report
               </Button>
-              <Button variant="outline" className="justify-start gap-2" data-testid="button-view-employees">
+              <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/apps/epm/profiles/employee-list")} data-testid="button-view-employees">
                 <Users className="h-4 w-4" />
                 View Employees
               </Button>
-              <Button variant="outline" className="justify-start gap-2" data-testid="button-configure-alerts">
+              <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/apps/epm/alerts/alert-rules")} data-testid="button-configure-alerts">
                 <BellRing className="h-4 w-4" />
                 Configure Alerts
               </Button>
-              <Button variant="outline" className="justify-start gap-2" data-testid="button-ai-insights">
+              <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/apps/epm/dashboard/ai-recommendations")} data-testid="button-ai-insights">
                 <Sparkles className="h-4 w-4" />
                 AI Insights
               </Button>
