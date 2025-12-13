@@ -707,6 +707,22 @@ function UserManagementContent() {
 
   const { data, isLoading } = useQuery<EpmUsersResponse>({
     queryKey: ["/api/epm/users", page, searchTerm, statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "50",
+        search: searchTerm,
+        status: statusFilter === "all" ? "" : statusFilter,
+      });
+      const res = await fetch(`/api/epm/users?${params.toString()}`, {
+        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pcvisor_auth_token") || ""}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
   });
 
   const createMutation = useMutation({
