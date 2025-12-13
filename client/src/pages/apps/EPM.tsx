@@ -2028,6 +2028,8 @@ export default function EPM() {
                 <ApiDocumentationContent />
               ) : location === "/apps/epm/admin-settings/user-management" ? (
                 <UserManagementContent />
+              ) : location === "/apps/epm/profiles/employee-list" ? (
+                <UserManagementContent />
               ) : (
                 <PageInProgress title={pageTitle} />
               )}
