@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, boolean, serial, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, boolean, serial, numeric, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -791,3 +791,72 @@ export interface LicensePayload {
 export type LocalLicenseStatus =
   | { ok: true; payload: LicensePayload }
   | { ok: false; reason: "NO_LICENSE" | "INVALID" | "EXPIRED" | "HARDWARE_MISMATCH" };
+
+// EPM User Master table
+export const epmUserMaster = pgTable("epm_user_master", {
+  userId: serial("user_id").primaryKey(),
+  empId: varchar("emp_id", { length: 50 }).notNull(),
+  userName: varchar("user_name", { length: 100 }).notNull(),
+  emailId: varchar("email_id", { length: 100 }).notNull(),
+  userType: varchar("user_type", { length: 50 }).notNull(),
+  userRole: varchar("user_role", { length: 100 }),
+  locCode: varchar("loc_code", { length: 50 }).notNull(),
+  location: varchar("location", { length: 100 }),
+  depCode: varchar("dep_code", { length: 50 }).notNull(),
+  managerUserId: varchar("manager_user_id", { length: 100 }),
+  managerCode: varchar("manager_code", { length: 100 }),
+  managerName: varchar("manager_name", { length: 100 }),
+  managerEmailId: varchar("manager_email_id", { length: 100 }),
+  manager2Code: varchar("manager2_code", { length: 100 }),
+  manager2Name: varchar("manager2_name", { length: 100 }),
+  manager2EmailId: varchar("manager2_email_id", { length: 100 }),
+  designationCode: varchar("designation_code", { length: 100 }),
+  contactNo: varchar("contact_no", { length: 25 }),
+  userRemarks: varchar("user_remarks", { length: 250 }),
+  domainType: varchar("domain_type", { length: 25 }),
+  isOnline: boolean("is_online").default(false),
+  agentGuid: varchar("agent_guid", { length: 100 }),
+  insertBy: integer("insert_by"),
+  insertDt: timestamp("insert_dt", { withTimezone: true }).defaultNow(),
+  updateBy: integer("update_by"),
+  updateDt: timestamp("update_dt", { withTimezone: true }),
+  status: varchar("status", { length: 10 }).default("Active"),
+});
+
+// EPM User Master schemas
+export const insertEpmUserSchema = createInsertSchema(epmUserMaster, {
+  empId: z.string().min(1, "Employee ID is required").max(50),
+  userName: z.string().min(1, "User name is required").max(100),
+  emailId: z.string().email("Invalid email address").max(100),
+  userType: z.string().min(1, "User type is required").max(50),
+  userRole: z.string().max(100).optional().nullable(),
+  locCode: z.string().min(1, "Location code is required").max(50),
+  location: z.string().max(100).optional().nullable(),
+  depCode: z.string().min(1, "Department code is required").max(50),
+  managerUserId: z.string().max(100).optional().nullable(),
+  managerCode: z.string().max(100).optional().nullable(),
+  managerName: z.string().max(100).optional().nullable(),
+  managerEmailId: z.string().email().max(100).optional().nullable(),
+  manager2Code: z.string().max(100).optional().nullable(),
+  manager2Name: z.string().max(100).optional().nullable(),
+  manager2EmailId: z.string().email().max(100).optional().nullable(),
+  designationCode: z.string().max(100).optional().nullable(),
+  contactNo: z.string().max(25).optional().nullable(),
+  userRemarks: z.string().max(250).optional().nullable(),
+  domainType: z.string().max(25).optional().nullable(),
+  isOnline: z.boolean().optional().default(false),
+  agentGuid: z.string().max(100).optional().nullable(),
+  status: z.string().max(10).optional().default("Active"),
+}).omit({
+  userId: true,
+  insertBy: true,
+  insertDt: true,
+  updateBy: true,
+  updateDt: true,
+});
+
+export const updateEpmUserSchema = insertEpmUserSchema.partial();
+
+export type InsertEpmUser = z.infer<typeof insertEpmUserSchema>;
+export type UpdateEpmUser = z.infer<typeof updateEpmUserSchema>;
+export type EpmUser = typeof epmUserMaster.$inferSelect;
