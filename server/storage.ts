@@ -106,6 +106,20 @@ export interface IStorage {
   createProcessDetails(data: InsertProcessDetails): Promise<void>;
   upsertProcessDetails(data: InsertProcessDetails): Promise<void>;
   getAllProcessDetails(limit?: number): Promise<ProcessDetails[]>;
+  getTopApps(limit?: number): Promise<{ name: string; usageTime: number; usageCount: number }[]>;
+  getTopUrls(limit?: number): Promise<{ domain: string; visitCount: number; urlCount: number }[]>;
+  getEpmOverviewStats(): Promise<{
+    totalAgents: number;
+    activeAgents: number;
+    totalApps: number;
+    totalUrls: number;
+    avgProductivity: number;
+    totalActiveHours: number;
+    topApps: { name: string; usageTime: number; usageCount: number }[];
+    topUrls: { domain: string; visitCount: number; urlCount: number }[];
+    activityByHour: { hour: number; count: number }[];
+    productivityTrend: { day: string; productivity: number }[];
+  }>;
   
   // Sleep Event Details methods
   createSleepEventDetails(data: InsertSleepEventDetails): Promise<SleepEventDetails>;
@@ -470,6 +484,141 @@ export class PostgresStorage implements IStorage {
       .from(pcvProcessDetails)
       .orderBy(desc(pcvProcessDetails.eventDt))
       .limit(limit);
+  }
+
+  async getTopApps(limit: number = 10): Promise<{ name: string; usageTime: number; usageCount: number }[]> {
+    const allRecords = await db.select().from(pcvProcessDetails);
+    const appStats: Map<string, { usageTime: number; usageCount: number }> = new Map();
+    
+    for (const record of allRecords) {
+      const appName = record.processName || 'Unknown';
+      if (appName === 'Unknown' || !appName.trim()) continue;
+      
+      const stats = appStats.get(appName) || { usageTime: 0, usageCount: 0 };
+      stats.usageCount++;
+      stats.usageTime += parseInt(record.lapsedTime || '0', 10) || 0;
+      appStats.set(appName, stats);
+    }
+    
+    return Array.from(appStats.entries())
+      .map(([name, stats]) => ({
+        name,
+        usageTime: Math.round(stats.usageTime / 60),
+        usageCount: stats.usageCount,
+      }))
+      .sort((a, b) => b.usageTime - a.usageTime)
+      .slice(0, limit);
+  }
+
+  async getTopUrls(limit: number = 10): Promise<{ domain: string; visitCount: number; urlCount: number }[]> {
+    const allRecords = await db.select().from(pcvProcessDetails);
+    const urlStats: Map<string, { visitCount: number; urls: Set<string> }> = new Map();
+    
+    for (const record of allRecords) {
+      const domain = record.urlDomain || '';
+      if (!domain.trim()) continue;
+      
+      const stats = urlStats.get(domain) || { visitCount: 0, urls: new Set() };
+      stats.visitCount += parseInt(record.urlVisitCount || '0', 10) || 1;
+      if (record.urlName) stats.urls.add(record.urlName);
+      urlStats.set(domain, stats);
+    }
+    
+    return Array.from(urlStats.entries())
+      .map(([domain, stats]) => ({
+        domain,
+        visitCount: stats.visitCount,
+        urlCount: stats.urls.size,
+      }))
+      .sort((a, b) => b.visitCount - a.visitCount)
+      .slice(0, limit);
+  }
+
+  async getEpmOverviewStats(): Promise<{
+    totalAgents: number;
+    activeAgents: number;
+    totalApps: number;
+    totalUrls: number;
+    avgProductivity: number;
+    totalActiveHours: number;
+    topApps: { name: string; usageTime: number; usageCount: number }[];
+    topUrls: { domain: string; visitCount: number; urlCount: number }[];
+    activityByHour: { hour: number; count: number }[];
+    productivityTrend: { day: string; productivity: number }[];
+  }> {
+    const allRecords = await db.select().from(pcvProcessDetails);
+    
+    const agentGuids = new Set(allRecords.filter(r => r.agentGuid).map(r => r.agentGuid));
+    const totalAgents = agentGuids.size;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayRecords = allRecords.filter(r => r.eventDt && new Date(r.eventDt) >= today);
+    const activeAgents = new Set(todayRecords.filter(r => r.agentGuid).map(r => r.agentGuid)).size;
+    
+    const appNames = new Set(allRecords.filter(r => r.processName).map(r => r.processName));
+    const totalApps = appNames.size;
+    
+    const urlDomains = new Set(allRecords.filter(r => r.urlDomain).map(r => r.urlDomain));
+    const totalUrls = urlDomains.size;
+    
+    const totalRecords = allRecords.length;
+    const activeRecords = allRecords.filter(r => !r.idleStatus).length;
+    const avgProductivity = totalRecords > 0 ? Math.round((activeRecords / totalRecords) * 100) : 0;
+    
+    const totalLapsedSeconds = allRecords.reduce((sum, r) => sum + (parseInt(r.lapsedTime || '0', 10) || 0), 0);
+    const totalActiveHours = Math.round((totalLapsedSeconds / 3600) * 10) / 10;
+    
+    const topApps = await this.getTopApps(10);
+    const topUrls = await this.getTopUrls(10);
+    
+    const activityByHour: { hour: number; count: number }[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const hourRecords = allRecords.filter(r => {
+        if (!r.eventDt) return false;
+        const eventDate = new Date(r.eventDt);
+        return eventDate.getHours() === hour;
+      });
+      activityByHour.push({ hour, count: hourRecords.length });
+    }
+    
+    const productivityTrend: { day: string; productivity: number }[] = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      dayStart.setDate(dayStart.getDate() - i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      
+      const dayRecords = allRecords.filter(r => {
+        if (!r.eventDt) return false;
+        const eventDate = new Date(r.eventDt);
+        return eventDate >= dayStart && eventDate < dayEnd;
+      });
+      
+      const dayTotal = dayRecords.length;
+      const dayActive = dayRecords.filter(r => !r.idleStatus).length;
+      const dayProductivity = dayTotal > 0 ? Math.round((dayActive / dayTotal) * 100) : 0;
+      
+      productivityTrend.push({
+        day: dayNames[dayStart.getDay()],
+        productivity: dayProductivity,
+      });
+    }
+    
+    return {
+      totalAgents,
+      activeAgents,
+      totalApps,
+      totalUrls,
+      avgProductivity,
+      totalActiveHours,
+      topApps,
+      topUrls,
+      activityByHour,
+      productivityTrend,
+    };
   }
 
   // Sleep Event Details methods

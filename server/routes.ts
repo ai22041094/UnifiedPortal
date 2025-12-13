@@ -1501,6 +1501,38 @@ export async function registerRoutes(
     }
   });
 
+  // Get EPM overview stats with top apps and URLs
+  app.get("/api/epm/overview-stats", requireAuth, async (req, res, next) => {
+    try {
+      const stats = await storage.getEpmOverviewStats();
+      res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get top applications
+  app.get("/api/epm/top-apps", requireAuth, async (req, res, next) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const topApps = await storage.getTopApps(limit);
+      res.json(topApps);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get top URLs/domains
+  app.get("/api/epm/top-urls", requireAuth, async (req, res, next) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const topUrls = await storage.getTopUrls(limit);
+      res.json(topUrls);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // ============================================
   // EPM User Master Routes
   // ============================================
