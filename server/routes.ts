@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, externalSleepEventDetailsBatchSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, type SafeUser, type InsertProcessDetails, type InsertSleepEventDetails, type LicenseModule } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, externalSleepEventDetailsBatchSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, insertEpmUserSchema, updateEpmUserSchema, type SafeUser, type InsertProcessDetails, type InsertSleepEventDetails, type LicenseModule } from "@shared/schema";
 import webPush from "web-push";
 import { checkLicenseForLogin, getCurrentLicense, getAvailableModules, requireMasterAdmin, requireModuleAccess, validateLicenseWithServer, saveLicenseFromValidation, activateLicenseWithServer, saveLicenseFromActivation, isMasterAdmin, getMachineFingerprint } from "./license";
 import { fromError } from "zod-validation-error";
@@ -1496,6 +1496,87 @@ export async function registerRoutes(
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ============================================
+  // EPM User Master Routes
+  // ============================================
+
+  // Get all EPM users with pagination and search
+  app.get("/api/epm/users", requireAuth, async (req, res, next) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const search = req.query.search as string || "";
+      const status = req.query.status as string || "";
+      
+      const users = await storage.getEpmUsers({ page, limit, search, status });
+      res.json(users);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get single EPM user by ID
+  app.get("/api/epm/users/:id", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getEpmUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Create new EPM user
+  app.post("/api/epm/users", requireAdmin, async (req, res, next) => {
+    try {
+      const result = insertEpmUserSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      const currentUser = req.user as SafeUser;
+      const user = await storage.createEpmUser(result.data, parseInt(currentUser.id) || 0);
+      res.status(201).json(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Update EPM user
+  app.patch("/api/epm/users/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const result = updateEpmUserSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromError(result.error).toString() });
+      }
+      const currentUser = req.user as SafeUser;
+      const user = await storage.updateEpmUser(userId, result.data, parseInt(currentUser.id) || 0);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Delete EPM user
+  app.delete("/api/epm/users/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const deleted = await storage.deleteEpmUser(userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "User deleted successfully" });
     } catch (error) {
       next(error);
     }

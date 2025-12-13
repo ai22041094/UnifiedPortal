@@ -37,8 +37,12 @@ import {
   type LicenseInfo,
   type UpdateLicenseInfo,
   type LicenseModule,
+  type EpmUser,
+  type InsertEpmUser,
+  type UpdateEpmUser,
   users, 
   roles,
+  epmUserMaster,
   epmApiKeys,
   pcvProcessDetails,
   sleepEventDetails,
@@ -183,6 +187,13 @@ export interface IStorage {
   getLicenseInfo(): Promise<LicenseInfo | undefined>;
   updateLicenseInfo(data: UpdateLicenseInfo): Promise<LicenseInfo>;
   createDefaultLicenseInfo(): Promise<LicenseInfo>;
+  
+  // EPM User Master methods
+  getEpmUsers(options: { page: number; limit: number; search?: string; status?: string }): Promise<{ users: EpmUser[]; total: number; page: number; totalPages: number }>;
+  getEpmUserById(userId: number): Promise<EpmUser | undefined>;
+  createEpmUser(data: InsertEpmUser, insertBy: number): Promise<EpmUser>;
+  updateEpmUser(userId: number, data: UpdateEpmUser, updateBy: number): Promise<EpmUser | undefined>;
+  deleteEpmUser(userId: number): Promise<boolean>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -1030,6 +1041,83 @@ export class PostgresStorage implements IStorage {
       } as any)
       .returning();
     return created;
+  }
+
+  // EPM User Master methods
+  async getEpmUsers(options: { page: number; limit: number; search?: string; status?: string }): Promise<{ users: EpmUser[]; total: number; page: number; totalPages: number }> {
+    const { page, limit, search, status } = options;
+    const offset = (page - 1) * limit;
+    
+    let conditions: any[] = [];
+    
+    if (search && search.trim()) {
+      const searchPattern = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(epmUserMaster.userName, searchPattern),
+          ilike(epmUserMaster.emailId, searchPattern),
+          ilike(epmUserMaster.empId, searchPattern)
+        )
+      );
+    }
+    
+    if (status && status.trim()) {
+      conditions.push(eq(epmUserMaster.status, status));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(epmUserMaster)
+      .where(whereClause);
+    
+    const total = totalResult?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+    
+    const users = await db
+      .select()
+      .from(epmUserMaster)
+      .where(whereClause)
+      .orderBy(desc(epmUserMaster.insertDt))
+      .limit(limit)
+      .offset(offset);
+    
+    return { users, total, page, totalPages };
+  }
+
+  async getEpmUserById(userId: number): Promise<EpmUser | undefined> {
+    const [user] = await db
+      .select()
+      .from(epmUserMaster)
+      .where(eq(epmUserMaster.userId, userId))
+      .limit(1);
+    return user;
+  }
+
+  async createEpmUser(data: InsertEpmUser, insertBy: number): Promise<EpmUser> {
+    const [user] = await db
+      .insert(epmUserMaster)
+      .values({ ...data, insertBy, insertDt: new Date() })
+      .returning();
+    return user;
+  }
+
+  async updateEpmUser(userId: number, data: UpdateEpmUser, updateBy: number): Promise<EpmUser | undefined> {
+    const [user] = await db
+      .update(epmUserMaster)
+      .set({ ...data, updateBy, updateDt: new Date() })
+      .where(eq(epmUserMaster.userId, userId))
+      .returning();
+    return user;
+  }
+
+  async deleteEpmUser(userId: number): Promise<boolean> {
+    const result = await db
+      .delete(epmUserMaster)
+      .where(eq(epmUserMaster.userId, userId))
+      .returning();
+    return result.length > 0;
   }
 }
 
