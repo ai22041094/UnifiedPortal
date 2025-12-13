@@ -576,82 +576,202 @@ interface ProcessDetailsData {
   tag2: string | null;
 }
 
-function ProcessDetailsContent() {
+interface SleepEventData {
+  id: number;
+  agentGuid: string;
+  wakeTime: string;
+  sleepTime: string;
+  duration: string;
+  reason: string | null;
+  uploadStatus: string | null;
+}
+
+function ProcessDetailsTab() {
   const { data: processDetails, isLoading } = useQuery<ProcessDetailsData[]>({
     queryKey: ["/api/epm/process-details"],
   });
 
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+      </div>
+    );
+  }
+
+  if (!processDetails?.length) {
+    return (
+      <div className="p-12 text-center">
+        <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">No Process Data Yet</h3>
+        <p className="text-muted-foreground">No process details have been ingested yet. Use the external API to send data.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Process</TableHead>
+            <TableHead>Window Title</TableHead>
+            <TableHead>Agent ID</TableHead>
+            <TableHead>URL/Domain</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead>Tags</TableHead>
+            <TableHead>Event Time</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {processDetails.map((item) => (
+            <TableRow key={item.taskGuid} data-testid={`row-process-${item.taskGuid}`}>
+              <TableCell>
+                <div className="font-medium">{item.processName || "-"}</div>
+                <div className="text-xs text-muted-foreground">{item.processId || "-"}</div>
+              </TableCell>
+              <TableCell className="max-w-[200px] truncate" title={item.mainWindowTitle || ""}>
+                {item.mainWindowTitle || "-"}
+              </TableCell>
+              <TableCell>
+                <code className="text-xs bg-muted px-2 py-1 rounded">{item.agentGuid || "-"}</code>
+              </TableCell>
+              <TableCell>
+                <div className="text-sm">{item.urlDomain || "-"}</div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={item.idleStatus ? "secondary" : "default"}>
+                  {item.idleStatus ? "Idle" : "Active"}
+                </Badge>
+              </TableCell>
+              <TableCell>{item.lapsedTime ? `${item.lapsedTime}s` : "-"}</TableCell>
+              <TableCell>
+                <div className="flex gap-1 flex-wrap">
+                  {item.tag1 && <Badge variant="outline" className="text-xs">{item.tag1}</Badge>}
+                  {item.tag2 && <Badge variant="outline" className="text-xs">{item.tag2}</Badge>}
+                </div>
+              </TableCell>
+              <TableCell>
+                {item.eventDt ? format(new Date(item.eventDt), "MMM d, yyyy HH:mm") : "-"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function SleepEventsTab() {
+  const { data: sleepEvents, isLoading } = useQuery<SleepEventData[]>({
+    queryKey: ["/api/epm/sleep-events"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+      </div>
+    );
+  }
+
+  if (!sleepEvents?.length) {
+    return (
+      <div className="p-12 text-center">
+        <Moon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">No Sleep Data Yet</h3>
+        <p className="text-muted-foreground">No sleep events have been ingested yet. Use the external API to send data.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Agent ID</TableHead>
+            <TableHead>Sleep Time</TableHead>
+            <TableHead>Wake Time</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead>Reason</TableHead>
+            <TableHead>Upload Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sleepEvents.map((item) => (
+            <TableRow key={item.id} data-testid={`row-sleep-${item.id}`}>
+              <TableCell>
+                <code className="text-xs bg-muted px-2 py-1 rounded">{item.agentGuid}</code>
+              </TableCell>
+              <TableCell>
+                {item.sleepTime ? format(new Date(item.sleepTime), "MMM d, yyyy HH:mm") : "-"}
+              </TableCell>
+              <TableCell>
+                {item.wakeTime ? format(new Date(item.wakeTime), "MMM d, yyyy HH:mm") : "-"}
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary">{item.duration || "-"}</Badge>
+              </TableCell>
+              <TableCell>{item.reason || "-"}</TableCell>
+              <TableCell>
+                <Badge variant={item.uploadStatus === "uploaded" ? "default" : "outline"}>
+                  {item.uploadStatus || "pending"}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function IngestedDataContent() {
+  const [activeTab, setActiveTab] = useState<"process" | "sleep">("process");
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Ingested Process Data</h2>
-        <p className="text-muted-foreground">View process activity data received from external agents</p>
+        <h2 className="text-2xl font-bold">Ingested Data</h2>
+        <p className="text-muted-foreground">View data received from external agents</p>
+      </div>
+
+      <div className="flex gap-2 border-b border-border">
+        <Button
+          variant="ghost"
+          className={cn(
+            "rounded-none border-b-2 px-4 py-2",
+            activeTab === "process" 
+              ? "border-primary text-foreground" 
+              : "border-transparent text-muted-foreground"
+          )}
+          onClick={() => setActiveTab("process")}
+          data-testid="tab-process-data"
+        >
+          <Activity className="h-4 w-4 mr-2" />
+          Process Data
+        </Button>
+        <Button
+          variant="ghost"
+          className={cn(
+            "rounded-none border-b-2 px-4 py-2",
+            activeTab === "sleep" 
+              ? "border-primary text-foreground" 
+              : "border-transparent text-muted-foreground"
+          )}
+          onClick={() => setActiveTab("sleep")}
+          data-testid="tab-sleep-data"
+        >
+          <Moon className="h-4 w-4 mr-2" />
+          Sleep Data
+        </Button>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : !processDetails?.length ? (
-            <div className="p-12 text-center">
-              <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">No Data Yet</h3>
-              <p className="text-muted-foreground">No process details have been ingested yet. Use the external API to send data.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Process</TableHead>
-                    <TableHead>Window Title</TableHead>
-                    <TableHead>Agent ID</TableHead>
-                    <TableHead>URL/Domain</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead>Event Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {processDetails.map((item) => (
-                    <TableRow key={item.taskGuid} data-testid={`row-process-${item.taskGuid}`}>
-                      <TableCell>
-                        <div className="font-medium">{item.processName || "-"}</div>
-                        <div className="text-xs text-muted-foreground">{item.processId || "-"}</div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={item.mainWindowTitle || ""}>
-                        {item.mainWindowTitle || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded">{item.agentGuid || "-"}</code>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{item.urlDomain || "-"}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={item.idleStatus ? "secondary" : "default"}>
-                          {item.idleStatus ? "Idle" : "Active"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{item.lapsedTime ? `${item.lapsedTime}s` : "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {item.tag1 && <Badge variant="outline" className="text-xs">{item.tag1}</Badge>}
-                          {item.tag2 && <Badge variant="outline" className="text-xs">{item.tag2}</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {item.eventDt ? format(new Date(item.eventDt), "MMM d, yyyy HH:mm") : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          {activeTab === "process" ? <ProcessDetailsTab /> : <SleepEventsTab />}
         </CardContent>
       </Card>
     </div>
@@ -1248,7 +1368,7 @@ export default function EPM() {
               ) : location === "/apps/epm/integrations/api-keys" ? (
                 <ApiKeysContent />
               ) : location === "/apps/epm/integrations/api-endpoints" ? (
-                <ProcessDetailsContent />
+                <IngestedDataContent />
               ) : location === "/apps/epm/integrations/api-documentation" ? (
                 <ApiDocumentationContent />
               ) : (
