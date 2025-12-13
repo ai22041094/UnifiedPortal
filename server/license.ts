@@ -139,16 +139,18 @@ export async function saveLicenseFromActivation(
   licenseKey: string,
   activationResponse: LicenseActivationResponse
 ): Promise<LicenseInfo> {
-  if (activationResponse.ok && activationResponse.token && activationResponse.payload) {
+  if (activationResponse.activated && activationResponse.payload) {
     const validModules = activationResponse.payload.modules.filter(
       (m): m is LicenseModule => LICENSE_MODULES.includes(m as LicenseModule)
     );
 
+    const hardwareId = activationResponse.payload.hardwareId || getMachineFingerprint();
+
     return await storage.updateLicenseInfo({
       licenseKey,
-      licenseToken: activationResponse.token,
+      licenseToken: activationResponse.token || licenseKey,
       tenantId: activationResponse.payload.tenantId,
-      hardwareId: activationResponse.payload.hardwareId,
+      hardwareId: hardwareId,
       modules: validModules,
       expiry: new Date(activationResponse.payload.expiry),
       lastValidationStatus: "OK",

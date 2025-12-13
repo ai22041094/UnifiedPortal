@@ -721,15 +721,16 @@ export type LicenseServerResponse = z.infer<typeof licenseServerResponseSchema>;
 
 // License activation response schema (for /api/licenses/activate)
 export const licenseActivationResponseSchema = z.object({
-  ok: z.boolean(),
+  activated: z.boolean(),
   reason: z.string().optional(),
   token: z.string().optional(),
   payload: z.object({
     tenantId: z.string(),
     modules: z.array(z.string()),
     expiry: z.string(),
-    hardwareId: z.string(),
+    hardwareId: z.string().optional(),
     publicIp: z.string().optional(),
+    iat: z.number().optional(),
   }).optional(),
 });
 
