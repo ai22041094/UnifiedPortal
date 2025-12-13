@@ -161,6 +161,48 @@ export type InsertProcessDetails = z.infer<typeof insertProcessDetailsSchema>;
 export type UpdateProcessDetails = z.infer<typeof updateProcessDetailsSchema>;
 export type ProcessDetails = typeof pcvProcessDetails.$inferSelect;
 
+// EPM Module - Sleep Event Details table
+export const sleepEventDetails = pgTable("sleep_event_details", {
+  id: serial("id").primaryKey(),
+  agentGuid: numeric("agent_guid", { precision: 26 }).notNull(),
+  wakeTime: timestamp("wake_time", { withTimezone: true }).notNull(),
+  sleepTime: timestamp("sleep_time", { withTimezone: true }).notNull(),
+  duration: varchar("duration", { length: 255 }).notNull(),
+  reason: varchar("reason", { length: 255 }),
+  uploadStatus: varchar("upload_status", { length: 255 }),
+});
+
+// Sleep Event Details schemas
+export const insertSleepEventDetailsSchema = createInsertSchema(sleepEventDetails, {
+  agentGuid: z.string().min(1, "agentGuid is required"),
+  wakeTime: z.date(),
+  sleepTime: z.date(),
+  duration: z.string().max(255),
+  reason: z.string().max(255).optional().nullable(),
+  uploadStatus: z.string().max(255).optional().nullable(),
+}).omit({
+  id: true,
+});
+
+export type InsertSleepEventDetails = z.infer<typeof insertSleepEventDetailsSchema>;
+export type SleepEventDetails = typeof sleepEventDetails.$inferSelect;
+
+// External payload schema for sleep event details ingestion
+export const externalSleepEventDetailsSchema = z.object({
+  AgentGuid: z.string().min(1, "AgentGuid is required"),
+  WakeTime: z.string().min(1, "WakeTime is required"),
+  SleepTime: z.string().min(1, "SleepTime is required"),
+  Duration: z.string().min(1, "Duration is required"),
+  Reason: z.string().optional().nullable(),
+  UploadStatus: z.string().optional().nullable(),
+});
+
+export const externalSleepEventDetailsBatchSchema = z.object({
+  data: z.array(externalSleepEventDetailsSchema).min(1, "At least one record is required"),
+});
+
+export type ExternalSleepEventDetails = z.infer<typeof externalSleepEventDetailsSchema>;
+
 // API Keys table for external integrations
 export const epmApiKeys = pgTable("epm_api_keys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()::varchar`),

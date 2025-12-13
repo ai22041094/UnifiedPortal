@@ -8,6 +8,8 @@ import {
   type InsertApiKey,
   type InsertProcessDetails,
   type ProcessDetails,
+  type InsertSleepEventDetails,
+  type SleepEventDetails,
   type OrganizationSettings,
   type UpdateOrganizationSettings,
   type NotificationSettings,
@@ -39,6 +41,7 @@ import {
   roles,
   epmApiKeys,
   pcvProcessDetails,
+  sleepEventDetails,
   organizationSettings,
   notificationSettings,
   pushSubscriptions,
@@ -84,6 +87,11 @@ export interface IStorage {
   createProcessDetails(data: InsertProcessDetails): Promise<void>;
   upsertProcessDetails(data: InsertProcessDetails): Promise<void>;
   getAllProcessDetails(limit?: number): Promise<ProcessDetails[]>;
+  
+  // Sleep Event Details methods
+  createSleepEventDetails(data: InsertSleepEventDetails): Promise<SleepEventDetails>;
+  createSleepEventDetailsBatch(data: InsertSleepEventDetails[]): Promise<number>;
+  getAllSleepEventDetails(limit?: number): Promise<SleepEventDetails[]>;
   
   // Organization Settings methods
   getOrganizationSettings(): Promise<OrganizationSettings | undefined>;
@@ -312,6 +320,26 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(pcvProcessDetails)
       .orderBy(desc(pcvProcessDetails.eventDt))
+      .limit(limit);
+  }
+
+  // Sleep Event Details methods
+  async createSleepEventDetails(data: InsertSleepEventDetails): Promise<SleepEventDetails> {
+    const [event] = await db.insert(sleepEventDetails).values(data).returning();
+    return event;
+  }
+
+  async createSleepEventDetailsBatch(data: InsertSleepEventDetails[]): Promise<number> {
+    if (data.length === 0) return 0;
+    await db.insert(sleepEventDetails).values(data);
+    return data.length;
+  }
+
+  async getAllSleepEventDetails(limit: number = 100): Promise<SleepEventDetails[]> {
+    return db
+      .select()
+      .from(sleepEventDetails)
+      .orderBy(desc(sleepEventDetails.wakeTime))
       .limit(limit);
   }
 

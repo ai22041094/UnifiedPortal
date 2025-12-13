@@ -845,15 +845,160 @@ function ApiDocumentationContent() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Moon className="h-5 w-5" />
+            Sleep Event Details Ingestion API
+          </CardTitle>
+          <CardDescription>Send sleep/wake event data from laptop agents to PCVisor</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <h4 className="font-medium">Endpoint</h4>
+            <div className="flex items-center gap-2">
+              <Badge>POST</Badge>
+              <code className="flex-1 bg-muted px-3 py-2 rounded text-sm" data-testid="text-sleep-api-endpoint">
+                {baseUrl}/api/external/epm/sleep-events
+              </code>
+              <Button variant="ghost" size="icon" onClick={() => copyToClipboard(`${baseUrl}/api/external/epm/sleep-events`)} data-testid="button-copy-sleep-endpoint">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Authentication</h4>
+            <p className="text-sm text-muted-foreground">Include your API key in the request headers:</p>
+            <div className="bg-muted p-3 rounded">
+              <code className="text-sm">x-api-key: YOUR_API_KEY</code>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Request Body</h4>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Field</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { field: "data", type: "array", desc: "Array of sleep event records (required)" },
+                  { field: "data[].AgentGuid", type: "string", desc: "Agent/device identifier (required)" },
+                  { field: "data[].WakeTime", type: "string", desc: "Wake timestamp (format: YYYY-MM-DD HH:MM:SS) (required)" },
+                  { field: "data[].SleepTime", type: "string", desc: "Sleep timestamp (format: YYYY-MM-DD HH:MM:SS) (required)" },
+                  { field: "data[].Duration", type: "string", desc: "Duration of sleep (e.g., 0:07:35) (required)" },
+                  { field: "data[].Reason", type: "string", desc: "Reason for sleep (e.g., Thermal Zone, User Initiated)" },
+                  { field: "data[].UploadStatus", type: "string", desc: "Upload status indicator" },
+                ].map((row) => (
+                  <TableRow key={row.field}>
+                    <TableCell><code>{row.field}</code></TableCell>
+                    <TableCell><code className="text-xs">{row.type}</code></TableCell>
+                    <TableCell className="text-sm">{row.desc}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Sample Request</h4>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`{
+  "data": [
+    {
+      "AgentGuid": "340367429854671",
+      "WakeTime": "2025-11-20 20:23:56",
+      "SleepTime": "2025-11-20 20:16:21",
+      "Duration": "0:07:35",
+      "Reason": "Thermal Zone",
+      "UploadStatus": ""
+    }
+  ]
+}`)} data-testid="button-copy-sleep-sample">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy JSON
+              </Button>
+            </div>
+            <pre className="bg-muted p-4 rounded text-xs overflow-x-auto" data-testid="text-sleep-sample-payload">
+{`{
+  "data": [
+    {
+      "AgentGuid": "340367429854671",
+      "WakeTime": "2025-11-20 20:23:56",
+      "SleepTime": "2025-11-20 20:16:21",
+      "Duration": "0:07:35",
+      "Reason": "Thermal Zone",
+      "UploadStatus": ""
+    }
+  ]
+}`}
+            </pre>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Response</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="font-medium text-sm">Success (201)</span>
+                </div>
+                <pre className="bg-muted p-3 rounded text-xs">
+{`{
+  "message": "Sleep event details ingested successfully",
+  "count": 1
+}`}
+                </pre>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <span className="font-medium text-sm">Error (401/400)</span>
+                </div>
+                <pre className="bg-muted p-3 rounded text-xs">
+{`{
+  "message": "Invalid API key"
+}`}
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">cURL Example</h4>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`curl -X POST "${baseUrl}/api/external/epm/sleep-events" \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: YOUR_API_KEY" \\
+  -d '{"data":[{"AgentGuid":"340367429854671","WakeTime":"2025-11-20 20:23:56","SleepTime":"2025-11-20 20:16:21","Duration":"0:07:35","Reason":"Thermal Zone","UploadStatus":""}]}'`)} data-testid="button-copy-sleep-curl">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </Button>
+            </div>
+            <pre className="bg-muted p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap">
+{`curl -X POST "${baseUrl}/api/external/epm/sleep-events" \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: YOUR_API_KEY" \\
+  -d '{"data":[{"AgentGuid":"340367429854671","WakeTime":"2025-11-20 20:23:56","SleepTime":"2025-11-20 20:16:21","Duration":"0:07:35","Reason":"Thermal Zone","UploadStatus":""}]}'`}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Getting Started</CardTitle>
         </CardHeader>
         <CardContent>
           <ol className="list-decimal list-inside space-y-3 text-sm">
-            <li>Navigate to <strong>Integrations &amp; API</strong> &gt; <strong>API Endpoints</strong> to create an API key</li>
+            <li>Navigate to <strong>Integrations &amp; API</strong> &gt; <strong>API Keys</strong> to create an API key</li>
             <li>Copy or download your API key securely (it will only be shown once)</li>
-            <li>Configure your agent or external system to send data to the endpoint above</li>
+            <li>Configure your agent or external system to send data to the endpoints above</li>
             <li>Include the <code className="bg-muted px-1 rounded">x-api-key</code> header with every request</li>
-            <li>Monitor data ingestion in the Process Usage Logs section</li>
+            <li>Monitor data ingestion in the Ingested Data section</li>
           </ol>
         </CardContent>
       </Card>

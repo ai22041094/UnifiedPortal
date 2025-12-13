@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { hashPassword, getSafeUser } from "./auth";
-import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, type SafeUser, type InsertProcessDetails, type LicenseModule } from "@shared/schema";
+import { insertUserSchema, insertRoleSchema, updateRoleSchema, updateUserSchema, externalProcessDetailsSchema, externalSleepEventDetailsBatchSchema, changePasswordSchema, updateOrganizationSettingsSchema, updateNotificationSettingsSchema, insertPushSubscriptionSchema, insertNotificationSchema, updateSecuritySettingsSchema, updateSystemConfigSchema, mfaSetupSchema, mfaVerifySchema, mfaLoginVerifySchema, licenseValidateRequestSchema, LICENSE_MODULES, type SafeUser, type InsertProcessDetails, type InsertSleepEventDetails, type LicenseModule } from "@shared/schema";
 import webPush from "web-push";
 import { checkLicenseForLogin, getCurrentLicense, getAvailableModules, requireMasterAdmin, requireModuleAccess, validateLicenseWithServer, saveLicenseFromValidation, activateLicenseWithServer, saveLicenseFromActivation, isMasterAdmin, getMachineFingerprint } from "./license";
 import { fromError } from "zod-validation-error";
@@ -1433,6 +1433,59 @@ export async function registerRoutes(
         message: "Process details ingested successfully",
         taskGuid: data.taskguid
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // External Sleep Event Details Ingestion Endpoint
+  app.post("/api/external/epm/sleep-events", requireApiKey, async (req, res, next) => {
+    try {
+      const result = externalSleepEventDetailsBatchSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          message: fromError(result.error).toString(),
+          errors: result.error.errors
+        });
+      }
+
+      const parseDateTime = (dateStr: string): Date => {
+        // Parse "YYYY-MM-DD HH:MM:SS" format
+        const parsed = new Date(dateStr.replace(' ', 'T'));
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+        // Fallback to current date if parsing fails
+        return new Date();
+      };
+
+      const sleepEvents: InsertSleepEventDetails[] = result.data.data.map(item => ({
+        agentGuid: item.AgentGuid,
+        wakeTime: parseDateTime(item.WakeTime),
+        sleepTime: parseDateTime(item.SleepTime),
+        duration: item.Duration,
+        reason: item.Reason || null,
+        uploadStatus: item.UploadStatus || null,
+      }));
+
+      const count = await storage.createSleepEventDetailsBatch(sleepEvents);
+
+      res.status(201).json({ 
+        message: "Sleep event details ingested successfully",
+        count: count
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get all sleep event details (admin only)
+  app.get("/api/epm/sleep-events", requireAdmin, async (req, res, next) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const sleepEvents = await storage.getAllSleepEventDetails(limit);
+      res.json(sleepEvents);
     } catch (error) {
       next(error);
     }
