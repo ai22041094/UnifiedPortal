@@ -249,8 +249,8 @@ function DashboardContent() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-24 mb-2" />
@@ -265,30 +265,44 @@ function DashboardContent() {
 
   const statCards = [
     { 
-      label: "Active Employees", 
+      label: "Total Employees", 
       value: stats?.activeEmployees?.toString() || "0", 
-      trend: `+${stats?.activeEmployeesToday || 0} today`, 
+      trend: "Registered agents", 
       icon: Users, 
       color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" 
     },
     { 
+      label: "Active Today", 
+      value: stats?.activeEmployeesToday?.toString() || "0", 
+      trend: "Online now", 
+      icon: Activity, 
+      color: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400" 
+    },
+    { 
       label: "Avg Productivity", 
       value: `${stats?.avgProductivity || 0}%`, 
-      trend: `${stats?.productivityTrend && stats.productivityTrend >= 0 ? '+' : ''}${stats?.productivityTrend || 0}%`, 
+      trend: `${stats?.productivityTrend && stats.productivityTrend >= 0 ? '+' : ''}${stats?.productivityTrend || 0}% vs last week`, 
       icon: TrendingUp, 
       color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" 
     },
     { 
       label: "Active Time", 
       value: `${stats?.activeTimeHours || 0}h`, 
-      trend: "avg/day", 
+      trend: `${stats?.activeTimeTrend && stats.activeTimeTrend >= 0 ? '+' : ''}${stats?.activeTimeTrend || 0}h trend`, 
       icon: Clock, 
       color: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" 
     },
     { 
+      label: "Top Performers", 
+      value: stats?.topPerformers?.length?.toString() || "0", 
+      trend: "High productivity", 
+      icon: UserCheck, 
+      color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
+    },
+    { 
       label: "Alerts", 
       value: stats?.alerts?.toString() || "0", 
-      trend: "pending", 
+      trend: "Pending review", 
       icon: Bell, 
       color: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" 
     },
@@ -296,7 +310,7 @@ function DashboardContent() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {statCards.map((stat) => (
           <Card key={stat.label} data-testid={`card-stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
             <CardContent className="p-6 flex items-center justify-between gap-4">
