@@ -2,8 +2,9 @@ import { config } from "dotenv";
 config();
 
 import { db } from "../server/db";
-import { pcvProcessDetails, sleepEventDetails } from "../shared/schema";
+import { pcvProcessDetails, sleepEventDetails, epmUserMaster } from "../shared/schema";
 import { v4 as uuidv4 } from "uuid";
+import { eq } from "drizzle-orm";
 
 const agentGuids = [
   "346710084364455",
@@ -232,6 +233,7 @@ async function uploadTestData() {
 
   let totalSleepEvents = 0;
   let totalProcessDetails = 0;
+  let totalUsersCreated = 0;
 
   try {
     console.log(`Generating data for ${agentGuids.length} agents over ${days} days...\n`);
@@ -239,6 +241,34 @@ async function uploadTestData() {
     for (const agentGuid of agentGuids) {
       const userInfo = getUserInfoByAgentGuid(agentGuid);
       console.log(`[Agent ${agentGuid}] - ${userInfo?.userName || "Unknown"}`);
+
+      // Insert or update user in epm_user_master
+      if (userInfo) {
+        const existingUser = await db.select().from(epmUserMaster).where(eq(epmUserMaster.agentGuid, agentGuid)).limit(1);
+        if (existingUser.length === 0) {
+          await db.insert(epmUserMaster).values({
+            empId: userInfo.empId,
+            userName: userInfo.userName,
+            emailId: userInfo.emailId,
+            userType: userInfo.userType,
+            locCode: userInfo.locCode,
+            location: userInfo.location,
+            depCode: userInfo.depCode,
+            managerName: userInfo.managerName,
+            managerEmailId: userInfo.managerEmailId,
+            designationCode: userInfo.designationCode,
+            contactNo: userInfo.contactNo,
+            domainType: userInfo.domainType,
+            agentGuid: userInfo.agentGuid,
+            status: "Active",
+            isOnline: Math.random() > 0.5,
+          });
+          totalUsersCreated++;
+          console.log(`  User Created: ${userInfo.userName}`);
+        } else {
+          console.log(`  User Exists: ${userInfo.userName}`);
+        }
+      }
 
       const sleepEvents = generateSleepEvents(agentGuid, startDate, days);
       const processDetails = generateProcessDetails(agentGuid, startDate, days);
@@ -259,6 +289,7 @@ async function uploadTestData() {
     console.log("\n==========================================");
     console.log("  Upload Complete!");
     console.log("==========================================");
+    console.log(`  Users Created: ${totalUsersCreated}`);
     console.log(`  Total Sleep Events: ${totalSleepEvents}`);
     console.log(`  Total Process Details: ${totalProcessDetails}`);
     console.log(`  Agents Processed: ${agentGuids.length}`);
