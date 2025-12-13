@@ -1,39 +1,34 @@
 <#        
     .SYNOPSIS
-     A brief summary of the commands in the file.
+    EPM API Test Script for pcvisor
 
     .DESCRIPTION
-    A detailed description of the commands in the file.
+    Tests the EPM Process Details POST API endpoint
 
     .NOTES
     ========================================================================
          Windows PowerShell Source File 
          Created with SAPIEN Technologies PrimalScript 2022
          
-         NAME: 
+         NAME: Test-EpmApi.ps1
          
          AUTHOR: HP , HP Inc.
          DATE  : 13-12-2025
-         
-         COMMENT: 
-         
     ==========================================================================
 #>
-# EPM API Test Script for pcvisor
-# This script tests the EPM Process Details POST API endpoint
 
 param(
     [Parameter(Mandatory=$false)]
-    [string]$BaseUrl = "https://a6ecdc4c-4f8d-45b3-b9b4-e981fc7b3a5c-00-16u2wiw3rjf0k.spock.replit.dev",
+    [string]$BaseUrl = "https://f9c615c7-40f5-46ea-bebe-2b05c2623570-00-1fcmzk31wabv3.worf.replit.dev",
     
     [Parameter(Mandatory=$false)]
-    [string]$ApiKey = "pcv_68c7ced2f29c1fe022b7f2df464beeb4cf1a92ef267ffcf60a09c6bbefec35c0",
+    [string]$ApiKey = "pcv_9e3a37c02825ebfa0bf5bb8cd87f4383c5d4bff5b5bc7f1f6a20d42c8509857f",
     
     [Parameter(Mandatory=$false)]
     [switch]$ShowVerbose
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 function Write-Header {
     param([string]$Title)
@@ -57,17 +52,6 @@ function Write-Info {
     Write-Host "[INFO] $Message" -ForegroundColor Yellow
 }
 
-function Remove-NullProperties {
-    param([hashtable]$InputHash)
-    $cleanHash = @{}
-    foreach ($key in $InputHash.Keys) {
-        if ($null -ne $InputHash[$key]) {
-            $cleanHash[$key] = $InputHash[$key]
-        }
-    }
-    return $cleanHash
-}
-
 function Send-ProcessDetails {
     param(
         [Parameter(Mandatory=$true)]
@@ -75,38 +59,60 @@ function Send-ProcessDetails {
     )
     
     $endpoint = "$BaseUrl/api/external/epm/process-details"
-    $headers = @{
-        "Content-Type" = "application/json; charset=utf-8"
-        "x-api-key" = $ApiKey
-    }
     
-    $cleanData = Remove-NullProperties -InputHash $ProcessData
-    $body = $cleanData | ConvertTo-Json -Depth 10 -Compress
+    # Build JSON manually to avoid PowerShell serialization issues
+    $jsonParts = @()
+    foreach ($key in $ProcessData.Keys) {
+        $value = $ProcessData[$key]
+        if ($null -eq $value) {
+            continue
+        }
+        elseif ($value -is [bool]) {
+            $jsonValue = if ($value) { "true" } else { "false" }
+            $jsonParts += "`"$key`":$jsonValue"
+        }
+        elseif ($value -is [int] -or $value -is [long] -or $value -is [double]) {
+            $jsonParts += "`"$key`":$value"
+        }
+        else {
+            $escapedValue = $value.ToString().Replace('\', '\\').Replace('"', '\"')
+            $jsonParts += "`"$key`":`"$escapedValue`""
+        }
+    }
+    $body = "{" + ($jsonParts -join ",") + "}"
     
     if ($ShowVerbose) {
         Write-Info "Sending to: $endpoint"
-        Write-Info "Request Body:"
-        Write-Host $body -ForegroundColor Gray
+        Write-Info "Request Body: $body"
     }
     
     try {
-        $response = Invoke-RestMethod -Uri $endpoint -Method Post -Headers $headers -Body $body
+        $response = Invoke-WebRequest -Uri $endpoint -Method Post -ContentType "application/json" -Headers @{"x-api-key" = $ApiKey} -Body $body -UseBasicParsing
+        $responseBody = $response.Content | ConvertFrom-Json
         return @{
             Success = $true
-            Response = $response
+            StatusCode = $response.StatusCode
+            Response = $responseBody
         }
     }
     catch {
-        $errorResponse = $_.Exception.Response
-        $statusCode = [int]$errorResponse.StatusCode
+        $statusCode = 0
+        $errorBody = $null
         
-        try {
-            $reader = New-Object System.IO.StreamReader($errorResponse.GetResponseStream())
-            $errorBody = $reader.ReadToEnd() | ConvertFrom-Json
-            $reader.Close()
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+            try {
+                $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $errorText = $reader.ReadToEnd()
+                $reader.Close()
+                $errorBody = $errorText | ConvertFrom-Json
+            }
+            catch {
+                $errorBody = @{ message = $errorText }
+            }
         }
-        catch {
-            $errorBody = $_.Exception.Message
+        else {
+            $errorBody = @{ message = $_.Exception.Message }
         }
         
         return @{
@@ -121,6 +127,7 @@ Write-Header "EPM API Test Script"
 Write-Info "Base URL: $BaseUrl"
 Write-Info "API Key: $($ApiKey.Substring(0, [Math]::Min(10, $ApiKey.Length)))..."
 
+# Test 1: Basic Process Details
 Write-Header "Test 1: Basic Process Details"
 
 $testData1 = @{
@@ -149,6 +156,7 @@ else {
     Write-Info "Error: $($result1.Error | ConvertTo-Json -Compress)"
 }
 
+# Test 2: Browser Process with URL
 Write-Header "Test 2: Browser Process with URL"
 
 $testData2 = @{
@@ -159,7 +167,7 @@ $testData2 = @{
     MainWindowTitle = "Google - Google Chrome"
     StartTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     Eventdt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-    IdleStatus = $false
+    IdleStatus = 0
     Urlname = "https://www.google.com/search?q=test"
     UrlDomain = "google.com"
     TimeLapsed = 300
@@ -179,6 +187,7 @@ else {
     Write-Info "Error: $($result2.Error | ConvertTo-Json -Compress)"
 }
 
+# Test 3: Idle Status Process
 Write-Header "Test 3: Idle Status Process"
 
 $testData3 = @{
@@ -206,6 +215,7 @@ else {
     Write-Info "Error: $($result3.Error | ConvertTo-Json -Compress)"
 }
 
+# Test 4: Minimal Required Fields
 Write-Header "Test 4: Minimal Required Fields"
 
 $testData4 = @{
@@ -224,6 +234,7 @@ else {
     Write-Info "Error: $($result4.Error | ConvertTo-Json -Compress)"
 }
 
+# Test 5: Validation Error (Missing taskguid)
 Write-Header "Test 5: Validation Error (Missing taskguid)"
 
 $testData5 = @{
@@ -235,11 +246,7 @@ $result5 = Send-ProcessDetails -ProcessData $testData5
 
 if (-not $result5.Success -and $result5.StatusCode -eq 400) {
     Write-Success "Validation correctly rejected missing taskguid"
-    $errorMsg = if ($result5.Error -is [PSCustomObject] -and $result5.Error.message) { 
-        $result5.Error.message 
-    } else { 
-        $result5.Error | ConvertTo-Json -Compress 
-    }
+    $errorMsg = if ($result5.Error.message) { $result5.Error.message } else { $result5.Error | ConvertTo-Json -Compress }
     Write-Info "Error message: $errorMsg"
 }
 elseif ($result5.Success) {
@@ -249,6 +256,7 @@ else {
     Write-ErrorMsg "Unexpected error: $($result5.Error | ConvertTo-Json -Compress)"
 }
 
+# Summary
 Write-Header "Test Summary"
 
 $tests = @(
