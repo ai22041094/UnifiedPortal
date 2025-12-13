@@ -113,7 +113,7 @@ Write-Header "Test 1: Basic Process Details"
 
 $testData1 = @{
     taskguid = [guid]::NewGuid().ToString()
-    agentGuid = [guid]::NewGuid().ToString()
+    agentGuid = "12345678901234567890123456"
     ProcessId = "1234"
     ProcessName = "notepad.exe"
     MainWindowTitle = "Untitled - Notepad"
@@ -143,7 +143,7 @@ Write-Header "Test 2: Browser Process with URL"
 
 $testData2 = @{
     taskguid = [guid]::NewGuid().ToString()
-    agentGuid = [guid]::NewGuid().ToString()
+    agentGuid = "98765432109876543210987654"
     ProcessId = "5678"
     ProcessName = "chrome.exe"
     MainWindowTitle = "Google - Google Chrome"
@@ -173,7 +173,7 @@ Write-Header "Test 3: Idle Status Process"
 
 $testData3 = @{
     taskguid = [guid]::NewGuid().ToString()
-    agentGuid = [guid]::NewGuid().ToString()
+    agentGuid = "11111111111111111111111111"
     ProcessId = "9999"
     ProcessName = "explorer.exe"
     MainWindowTitle = "Windows Explorer"
