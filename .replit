@@ -55,3 +55,6 @@ TRUST_PROXY = "1"
 VAPID_PUBLIC_KEY = "BKrrzx8wDi84jKxCBe-AI7zkCZiJ7mEIEgwQVqyCgLdeupUAMFLYunGVyCJ1GbK3gFd7x9vtrP-kOjuL98xhyuI"
 VAPID_SUBJECT = "mailto:admin@pcvisor.com"
 LICENSE_SERVER_URL = "https://12d7df9a-ee3c-4f6b-afa4-9469ef053a99-00-24zohd8l8uajh.janeway.replit.dev"
+
+[userenv.development]
+TEST_API_KEY = "pcv_97b1286490ab91c6770920950de6b40c4c1b4ccfd3653633add26cc9ead82b2d"
