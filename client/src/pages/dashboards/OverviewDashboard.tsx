@@ -52,8 +52,8 @@ export default function OverviewDashboard() {
     return (
       <AppLayout title="EPM Overview Dashboard" appName="EPM">
         <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i} data-testid={`card-skeleton-${i}`}>
                 <CardContent className="p-6">
                   <div className="animate-pulse space-y-3">
@@ -73,9 +73,16 @@ export default function OverviewDashboard() {
     {
       title: "Total Agents",
       value: stats?.totalAgents || 0,
-      subValue: `${stats?.activeAgents || 0} active today`,
-      icon: Users,
+      subValue: "Registered devices",
+      icon: Monitor,
       color: "blue",
+    },
+    {
+      title: "Active Agents",
+      value: stats?.activeAgents || 0,
+      subValue: "Active today",
+      icon: Users,
+      color: "cyan",
     },
     {
       title: "Applications Tracked",
@@ -94,9 +101,16 @@ export default function OverviewDashboard() {
     {
       title: "Avg Productivity",
       value: `${stats?.avgProductivity || 0}%`,
-      subValue: `${stats?.totalActiveHours || 0}h total active time`,
+      subValue: "Based on active time",
       icon: Activity,
       color: "orange",
+    },
+    {
+      title: "Total Active Hours",
+      value: `${stats?.totalActiveHours || 0}h`,
+      subValue: "Cumulative work time",
+      icon: Clock,
+      color: "teal",
     },
   ];
 
@@ -107,7 +121,7 @@ export default function OverviewDashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {kpiCards.map((card, index) => (
             <Card key={card.title} data-testid={`card-kpi-${index}`}>
@@ -122,14 +136,18 @@ export default function OverviewDashboard() {
                   </div>
                   <div className={`h-12 w-12 rounded-xl flex-shrink-0 flex items-center justify-center ${
                     card.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                    card.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/30' :
                     card.color === 'green' ? 'bg-green-100 dark:bg-green-900/30' :
                     card.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                    card.color === 'teal' ? 'bg-teal-100 dark:bg-teal-900/30' :
                     'bg-orange-100 dark:bg-orange-900/30'
                   }`}>
                     <card.icon className={`h-6 w-6 ${
                       card.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                      card.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
                       card.color === 'green' ? 'text-green-600 dark:text-green-400' :
                       card.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
+                      card.color === 'teal' ? 'text-teal-600 dark:text-teal-400' :
                       'text-orange-600 dark:text-orange-400'
                     }`} />
                   </div>
