@@ -68,9 +68,11 @@ export async function activateLicenseWithServer(licenseKey: string): Promise<{
     }
 
     const rawData = await response.json();
+    console.log("[License] Raw activation response from server:", JSON.stringify(rawData, null, 2));
     const parsed = licenseActivationResponseSchema.safeParse(rawData);
     
     if (!parsed.success) {
+      console.log("[License] Schema validation failed:", JSON.stringify(parsed.error.errors, null, 2));
       return { 
         success: false, 
         error: "Invalid response from license server" 
