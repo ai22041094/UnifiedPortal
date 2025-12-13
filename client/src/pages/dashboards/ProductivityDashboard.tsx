@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   TrendingUp,
   TrendingDown,
@@ -16,48 +17,59 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
 
-const productivityMetrics = {
-  overallScore: 87.5,
-  activeTime: 6.8,
-  focusTime: 4.2,
-  meetingTime: 1.8,
-  breakTime: 0.8,
-  averageScore: 82.3,
-};
-
-const topPerformers = [
-  { id: 1, name: "Engineering Team", score: 94.2, trend: 5.3, members: 24 },
-  { id: 2, name: "Product Team", score: 91.8, trend: 3.7, members: 12 },
-  { id: 3, name: "Design Team", score: 89.5, trend: 2.1, members: 8 },
-  { id: 4, name: "Marketing Team", score: 86.3, trend: -1.2, members: 15 },
-  { id: 5, name: "Sales Team", score: 84.7, trend: 4.5, members: 32 },
-];
-
-const weeklyTrends = [
-  { day: "Mon", productivity: 85, focus: 4.5, meetings: 2.1 },
-  { day: "Tue", productivity: 88, focus: 4.8, meetings: 1.8 },
-  { day: "Wed", productivity: 82, focus: 3.9, meetings: 2.5 },
-  { day: "Thu", productivity: 91, focus: 5.2, meetings: 1.5 },
-  { day: "Fri", productivity: 79, focus: 3.5, meetings: 2.8 },
-];
-
-const productivityCards = [
-  { name: "Productivity Score", value: 87.5, unit: "%", trend: 4.2, icon: Zap, color: "green" },
-  { name: "Active Hours", value: 6.8, unit: "hrs", trend: 0.5, icon: Clock, color: "blue" },
-  { name: "Focus Time", value: 4.2, unit: "hrs", trend: 0.8, icon: Target, color: "purple" },
-  { name: "Meeting Time", value: 1.8, unit: "hrs", trend: -0.3, icon: Users, color: "orange" },
-];
-
-const insights = [
-  { id: 1, type: "positive", message: "Team productivity increased by 12% this week", icon: TrendingUp },
-  { id: 2, type: "positive", message: "Focus time improved across all departments", icon: Target },
-  { id: 3, type: "warning", message: "Meeting overload detected in Sales team", icon: Users },
-  { id: 4, type: "info", message: "Peak productivity hours: 9 AM - 11 AM", icon: Clock },
-];
+interface DashboardStatsData {
+  activeEmployees: number;
+  activeEmployeesToday: number;
+  avgProductivity: number;
+  productivityTrend: number;
+  activeTimeHours: number;
+  activeTimeTrend: number;
+  alerts: number;
+  topPerformers: { agentGuid: string; productivityScore: number; activeHours: number }[];
+  weeklyTrends: { day: string; productivity: number; activeHours: number }[];
+}
 
 export default function ProductivityDashboard() {
+  const { data: stats, isLoading } = useQuery<DashboardStatsData>({
+    queryKey: ["/api/epm/dashboard-stats"],
+  });
+
+  const productivityCards = [
+    { name: "Productivity Score", value: stats?.avgProductivity || 0, unit: "%", trend: stats?.productivityTrend || 0, icon: Zap, color: "green" },
+    { name: "Active Hours", value: stats?.activeTimeHours || 0, unit: "hrs", trend: stats?.activeTimeTrend || 0, icon: Clock, color: "blue" },
+    { name: "Active Agents", value: stats?.activeEmployees || 0, unit: "", trend: stats?.activeEmployeesToday || 0, icon: Target, color: "purple" },
+    { name: "Alerts", value: stats?.alerts || 0, unit: "", trend: 0, icon: Users, color: "orange" },
+  ];
+
+  const insights = stats ? [
+    { id: 1, type: stats.productivityTrend >= 0 ? "positive" : "warning", message: `Team productivity ${stats.productivityTrend >= 0 ? 'increased' : 'decreased'} by ${Math.abs(stats.productivityTrend)}% this week`, icon: stats.productivityTrend >= 0 ? TrendingUp : TrendingDown },
+    { id: 2, type: "info", message: `${stats.activeEmployees} total agents tracked`, icon: Target },
+    { id: 3, type: stats.alerts > 0 ? "warning" : "positive", message: stats.alerts > 0 ? `${stats.alerts} extended sleep events detected` : "No alerts - all systems normal", icon: Users },
+    { id: 4, type: "info", message: `Average active time: ${stats.activeTimeHours}h per day`, icon: Clock },
+  ] : [];
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Productivity Dashboard" appName="Service Desk">
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Productivity Dashboard" appName="Service Desk">
       <div className="p-6 space-y-6">
@@ -109,13 +121,13 @@ export default function ProductivityDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
-                  Top Performing Teams
+                  Top Performing Agents
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {topPerformers.map((team, index) => (
-                    <div key={team.id} className="flex items-center justify-between gap-4 py-2 border-b last:border-0">
+                  {stats?.topPerformers?.map((agent, index) => (
+                    <div key={agent.agentGuid} className="flex items-center justify-between gap-4 py-2 border-b last:border-0">
                       <div className="flex items-center gap-3">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${
                           index === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -126,21 +138,20 @@ export default function ProductivityDashboard() {
                           {index + 1}
                         </div>
                         <div>
-                          <span className="font-medium text-sm" data-testid={`text-team-${team.id}`}>{team.name}</span>
-                          <p className="text-xs text-muted-foreground">{team.members} members</p>
+                          <span className="font-medium text-sm" data-testid={`text-agent-${index}`}>Agent {agent.agentGuid.slice(0, 8)}...</span>
+                          <p className="text-xs text-muted-foreground">{agent.activeHours}h active</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold">{team.score}%</span>
-                        <div className={`flex items-center gap-0.5 text-xs ${
-                          team.trend >= 0 ? 'text-green-500' : 'text-red-500'
-                        }`}>
-                          {team.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {Math.abs(team.trend)}%
-                        </div>
+                        <span className="font-bold">{agent.productivityScore}%</span>
                       </div>
                     </div>
                   ))}
+                  {(!stats?.topPerformers || stats.topPerformers.length === 0) && (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No performance data available yet
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -160,18 +171,23 @@ export default function ProductivityDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {weeklyTrends.map((day) => (
+                  {stats?.weeklyTrends?.map((day) => (
                     <div key={day.day} className="space-y-2">
                       <div className="flex items-center justify-between gap-4">
                         <span className="font-medium text-sm w-12" data-testid={`text-day-${day.day.toLowerCase()}`}>{day.day}</span>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Focus: {day.focus}h</span>
-                          <span>Meetings: {day.meetings}h</span>
+                          <span>Active: {day.activeHours}h</span>
+                          <span>Productivity: {day.productivity}%</span>
                         </div>
                       </div>
                       <Progress value={day.productivity} className="h-2" />
                     </div>
                   ))}
+                  {(!stats?.weeklyTrends || stats.weeklyTrends.length === 0) && (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No weekly data available yet
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -223,30 +239,30 @@ export default function ProductivityDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                Daily Time Distribution
+                Summary Statistics
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="text-center p-4 rounded-lg bg-primary/10">
                   <Monitor className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <div className="text-2xl font-bold" data-testid="text-active-time">{productivityMetrics.activeTime}h</div>
-                  <p className="text-xs text-muted-foreground">Active Time</p>
+                  <div className="text-2xl font-bold" data-testid="text-active-time">{stats?.activeTimeHours || 0}h</div>
+                  <p className="text-xs text-muted-foreground">Avg Active Time/Day</p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-purple-100 dark:bg-purple-900/20">
                   <Target className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-focus-time">{productivityMetrics.focusTime}h</div>
-                  <p className="text-xs text-muted-foreground">Focus Time</p>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-productivity">{stats?.avgProductivity || 0}%</div>
+                  <p className="text-xs text-muted-foreground">Productivity Score</p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-orange-100 dark:bg-orange-900/20">
                   <Users className="h-8 w-8 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-meeting-time">{productivityMetrics.meetingTime}h</div>
-                  <p className="text-xs text-muted-foreground">Meeting Time</p>
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-agents">{stats?.activeEmployees || 0}</div>
+                  <p className="text-xs text-muted-foreground">Total Agents</p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-green-100 dark:bg-green-900/20">
-                  <Coffee className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-break-time">{productivityMetrics.breakTime}h</div>
-                  <p className="text-xs text-muted-foreground">Break Time</p>
+                  <Activity className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-today">{stats?.activeEmployeesToday || 0}</div>
+                  <p className="text-xs text-muted-foreground">Active Today</p>
                 </div>
               </div>
             </CardContent>

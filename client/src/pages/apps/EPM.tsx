@@ -224,16 +224,75 @@ function PageInProgress({ title }: { title: string }) {
   );
 }
 
+interface DashboardStatsData {
+  activeEmployees: number;
+  activeEmployeesToday: number;
+  avgProductivity: number;
+  productivityTrend: number;
+  activeTimeHours: number;
+  activeTimeTrend: number;
+  alerts: number;
+  topPerformers: { agentGuid: string; productivityScore: number; activeHours: number }[];
+  weeklyTrends: { day: string; productivity: number; activeHours: number }[];
+}
+
 function DashboardContent() {
+  const { data: stats, isLoading } = useQuery<DashboardStatsData>({
+    queryKey: ["/api/epm/dashboard-stats"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { 
+      label: "Active Employees", 
+      value: stats?.activeEmployees?.toString() || "0", 
+      trend: `+${stats?.activeEmployeesToday || 0} today`, 
+      icon: Users, 
+      color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" 
+    },
+    { 
+      label: "Avg Productivity", 
+      value: `${stats?.avgProductivity || 0}%`, 
+      trend: `${stats?.productivityTrend && stats.productivityTrend >= 0 ? '+' : ''}${stats?.productivityTrend || 0}%`, 
+      icon: TrendingUp, 
+      color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" 
+    },
+    { 
+      label: "Active Time", 
+      value: `${stats?.activeTimeHours || 0}h`, 
+      trend: "avg/day", 
+      icon: Clock, 
+      color: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" 
+    },
+    { 
+      label: "Alerts", 
+      value: stats?.alerts?.toString() || "0", 
+      trend: "pending", 
+      icon: Bell, 
+      color: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" 
+    },
+  ];
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: "Active Employees", value: "247", trend: "+12 today", icon: Users, color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
-          { label: "Avg Productivity", value: "78%", trend: "+5.2%", icon: TrendingUp, color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" },
-          { label: "Active Time", value: "6.5h", trend: "avg/day", icon: Clock, color: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" },
-          { label: "Alerts", value: "3", trend: "pending", icon: Bell, color: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" },
-        ].map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.label} data-testid={`card-stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
             <CardContent className="p-6 flex items-center justify-between gap-4">
               <div>
@@ -255,10 +314,28 @@ function DashboardContent() {
             <CardTitle>Productivity Overview</CardTitle>
             <CardDescription>Team productivity trends over the last 7 days</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center bg-muted/20 rounded-md">
-            <div className="text-center">
-              <LineChart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">Productivity Graph Visualization</p>
+          <CardContent>
+            <div className="space-y-4">
+              {stats?.weeklyTrends?.map((day) => (
+                <div key={day.day} className="space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium text-sm w-12">{day.day}</span>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Active: {day.activeHours}h</span>
+                      <span>Productivity: {day.productivity}%</span>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${day.productivity}%` }} />
+                  </div>
+                </div>
+              ))}
+              {(!stats?.weeklyTrends || stats.weeklyTrends.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <LineChart className="h-12 w-12 mx-auto mb-2" />
+                  <p>No productivity data available yet</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -266,24 +343,29 @@ function DashboardContent() {
         <Card>
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
-            <CardDescription>Highest productivity scores today</CardDescription>
+            <CardDescription>Highest productivity scores this week</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4" data-testid={`row-employee-${i}`}>
+              {stats?.topPerformers?.map((performer, i) => (
+                <div key={performer.agentGuid} className="flex items-center gap-4" data-testid={`row-employee-${i + 1}`}>
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold">
-                    {i}
+                    {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">Employee {i}</p>
+                    <p className="font-medium text-sm truncate">Agent {performer.agentGuid.slice(0, 8)}...</p>
                     <div className="w-full h-2 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-primary transition-all" style={{ width: `${100 - i * 5}%` }} />
+                      <div className="h-full bg-primary transition-all" style={{ width: `${performer.productivityScore}%` }} />
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-muted-foreground">{100 - i * 5}%</span>
+                  <span className="text-xs font-bold text-muted-foreground">{performer.productivityScore}%</span>
                 </div>
               ))}
+              {(!stats?.topPerformers || stats.topPerformers.length === 0) && (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  No performance data available yet
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -297,16 +379,16 @@ function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { type: "warning", message: "Low activity detected for 3 employees" },
-                { type: "info", message: "Weekly report ready for review" },
-                { type: "success", message: "Team productivity goal achieved" },
-              ].map((alert, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50" data-testid={`alert-item-${i}`}>
+              {stats?.alerts && stats.alerts > 0 ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50" data-testid="alert-item-0">
                   <Bell className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{alert.message}</span>
+                  <span className="text-sm">{stats.alerts} device(s) with extended sleep duration detected</span>
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  No alerts at this time
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

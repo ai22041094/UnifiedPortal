@@ -1491,6 +1491,16 @@ export async function registerRoutes(
     }
   });
 
+  // Get dashboard statistics (calculated from real data)
+  app.get("/api/epm/dashboard-stats", requireAuth, async (req, res, next) => {
+    try {
+      const stats = await storage.getDashboardStats();
+      res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // ============================================
   // Organization Settings Routes
   // ============================================

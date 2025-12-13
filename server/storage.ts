@@ -58,7 +58,22 @@ import {
 import { eq, and, isNull, gt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { db } from "./db";
 
+export interface DashboardStats {
+  activeEmployees: number;
+  activeEmployeesToday: number;
+  avgProductivity: number;
+  productivityTrend: number;
+  activeTimeHours: number;
+  activeTimeTrend: number;
+  alerts: number;
+  topPerformers: { agentGuid: string; productivityScore: number; activeHours: number }[];
+  weeklyTrends: { day: string; productivity: number; activeHours: number }[];
+}
+
 export interface IStorage {
+  // Dashboard Stats methods
+  getDashboardStats(): Promise<DashboardStats>;
+  
   // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -171,6 +186,130 @@ export interface IStorage {
 }
 
 export class PostgresStorage implements IStorage {
+  // Dashboard Stats methods
+  async getDashboardStats(): Promise<DashboardStats> {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+
+    // Get total unique agents (Active Employees)
+    const allAgentsResult = await db
+      .select({ agentGuid: pcvProcessDetails.agentGuid })
+      .from(pcvProcessDetails)
+      .groupBy(pcvProcessDetails.agentGuid);
+    const activeEmployees = allAgentsResult.filter(r => r.agentGuid).length;
+
+    // Get agents active today
+    const todayAgentsResult = await db
+      .select({ agentGuid: pcvProcessDetails.agentGuid })
+      .from(pcvProcessDetails)
+      .where(gte(pcvProcessDetails.eventDt, startOfToday))
+      .groupBy(pcvProcessDetails.agentGuid);
+    const activeEmployeesToday = todayAgentsResult.filter(r => r.agentGuid).length;
+
+    // Calculate productivity based on idle status (non-idle time / total time)
+    const allRecords = await db.select().from(pcvProcessDetails).where(gte(pcvProcessDetails.eventDt, startOfWeek));
+    const totalRecords = allRecords.length;
+    const activeRecords = allRecords.filter(r => !r.idleStatus).length;
+    const avgProductivity = totalRecords > 0 ? Math.round((activeRecords / totalRecords) * 100) : 0;
+
+    // Calculate productivity trend (compare this week vs last week)
+    const startOfLastWeek = new Date(startOfWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+    const lastWeekRecords = await db.select().from(pcvProcessDetails)
+      .where(and(gte(pcvProcessDetails.eventDt, startOfLastWeek), lte(pcvProcessDetails.eventDt, startOfWeek)));
+    const lastWeekTotal = lastWeekRecords.length;
+    const lastWeekActive = lastWeekRecords.filter(r => !r.idleStatus).length;
+    const lastWeekProductivity = lastWeekTotal > 0 ? Math.round((lastWeekActive / lastWeekTotal) * 100) : 0;
+    const productivityTrend = avgProductivity - lastWeekProductivity;
+
+    // Calculate active time (sum of lapsed time, convert to hours)
+    const totalLapsedSeconds = allRecords.reduce((sum, r) => {
+      const lapsed = parseInt(r.lapsedTime || '0', 10);
+      return sum + (isNaN(lapsed) ? 0 : lapsed);
+    }, 0);
+    const activeTimeHours = Math.round((totalLapsedSeconds / 3600) * 10) / 10;
+    const avgActiveHoursPerDay = activeEmployees > 0 ? Math.round((activeTimeHours / 7 / activeEmployees) * 10) / 10 : 0;
+
+    // Active time trend
+    const lastWeekLapsedSeconds = lastWeekRecords.reduce((sum, r) => {
+      const lapsed = parseInt(r.lapsedTime || '0', 10);
+      return sum + (isNaN(lapsed) ? 0 : lapsed);
+    }, 0);
+    const lastWeekActiveHours = lastWeekLapsedSeconds / 3600;
+    const lastWeekAvgHours = activeEmployees > 0 ? lastWeekActiveHours / 7 / activeEmployees : 0;
+    const activeTimeTrend = Math.round((avgActiveHoursPerDay - lastWeekAvgHours) * 10) / 10;
+
+    // Count alerts (sleep events with unusual patterns - long durations)
+    const recentSleepEvents = await db.select().from(sleepEventDetails)
+      .where(gte(sleepEventDetails.wakeTime, startOfWeek));
+    const alerts = recentSleepEvents.filter(e => {
+      const dur = parseInt(e.duration || '0', 10);
+      return dur > 28800; // > 8 hours
+    }).length;
+
+    // Top performers (agents with highest non-idle ratio)
+    const agentStats: Map<string, { active: number; total: number; lapsed: number }> = new Map();
+    for (const r of allRecords) {
+      if (!r.agentGuid) continue;
+      const stats = agentStats.get(r.agentGuid) || { active: 0, total: 0, lapsed: 0 };
+      stats.total++;
+      if (!r.idleStatus) stats.active++;
+      stats.lapsed += parseInt(r.lapsedTime || '0', 10) || 0;
+      agentStats.set(r.agentGuid, stats);
+    }
+    const topPerformers = Array.from(agentStats.entries())
+      .map(([agentGuid, stats]) => ({
+        agentGuid,
+        productivityScore: stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0,
+        activeHours: Math.round((stats.lapsed / 3600) * 10) / 10,
+      }))
+      .sort((a, b) => b.productivityScore - a.productivityScore)
+      .slice(0, 5);
+
+    // Weekly trends
+    const weeklyTrends: { day: string; productivity: number; activeHours: number }[] = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date(startOfToday);
+      dayStart.setDate(dayStart.getDate() - i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      
+      const dayRecords = allRecords.filter(r => {
+        if (!r.eventDt) return false;
+        const eventDate = new Date(r.eventDt);
+        return eventDate >= dayStart && eventDate < dayEnd;
+      });
+      
+      const dayTotal = dayRecords.length;
+      const dayActive = dayRecords.filter(r => !r.idleStatus).length;
+      const dayProductivity = dayTotal > 0 ? Math.round((dayActive / dayTotal) * 100) : 0;
+      const dayLapsed = dayRecords.reduce((sum, r) => sum + (parseInt(r.lapsedTime || '0', 10) || 0), 0);
+      
+      weeklyTrends.push({
+        day: dayNames[dayStart.getDay()],
+        productivity: dayProductivity,
+        activeHours: Math.round((dayLapsed / 3600) * 10) / 10,
+      });
+    }
+
+    return {
+      activeEmployees,
+      activeEmployeesToday,
+      avgProductivity,
+      productivityTrend,
+      activeTimeHours: avgActiveHoursPerDay,
+      activeTimeTrend,
+      alerts,
+      topPerformers,
+      weeklyTrends,
+    };
+  }
+
   // User methods
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
