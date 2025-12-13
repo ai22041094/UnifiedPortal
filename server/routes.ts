@@ -514,7 +514,7 @@ export async function registerRoutes(
         });
       }
 
-      if (!activation.data.ok) {
+      if (!activation.data.activated) {
         const user = req.user as SafeUser;
         await storage.createAuditLog({
           userId: user.id,
