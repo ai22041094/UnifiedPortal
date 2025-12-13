@@ -55,7 +55,7 @@ import {
   databaseSettings,
   licenseInfo
 } from "@shared/schema";
-import { eq, and, isNull, gt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
+import { eq, and, isNull, gt, lt, desc, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { db } from "./db";
 
 export interface DashboardStats {
@@ -195,12 +195,12 @@ export class PostgresStorage implements IStorage {
     const startOfWeek = new Date(startOfToday);
     startOfWeek.setDate(startOfWeek.getDate() - 7);
 
-    // Get total unique agents (Active Employees)
-    const allAgentsResult = await db
-      .select({ agentGuid: pcvProcessDetails.agentGuid })
-      .from(pcvProcessDetails)
-      .groupBy(pcvProcessDetails.agentGuid);
-    const activeEmployees = allAgentsResult.filter(r => r.agentGuid).length;
+    // Calculate productivity based on idle status (non-idle time / total time)
+    const allRecords = await db.select().from(pcvProcessDetails).where(gte(pcvProcessDetails.eventDt, startOfWeek));
+
+    // Get unique agents active this week (Active Employees)
+    const weeklyAgentGuids = new Set(allRecords.filter(r => r.agentGuid).map(r => r.agentGuid));
+    const activeEmployees = weeklyAgentGuids.size;
 
     // Get agents active today
     const todayAgentsResult = await db
@@ -209,9 +209,6 @@ export class PostgresStorage implements IStorage {
       .where(gte(pcvProcessDetails.eventDt, startOfToday))
       .groupBy(pcvProcessDetails.agentGuid);
     const activeEmployeesToday = todayAgentsResult.filter(r => r.agentGuid).length;
-
-    // Calculate productivity based on idle status (non-idle time / total time)
-    const allRecords = await db.select().from(pcvProcessDetails).where(gte(pcvProcessDetails.eventDt, startOfWeek));
     const totalRecords = allRecords.length;
     const activeRecords = allRecords.filter(r => !r.idleStatus).length;
     const avgProductivity = totalRecords > 0 ? Math.round((activeRecords / totalRecords) * 100) : 0;
@@ -220,7 +217,7 @@ export class PostgresStorage implements IStorage {
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
     const lastWeekRecords = await db.select().from(pcvProcessDetails)
-      .where(and(gte(pcvProcessDetails.eventDt, startOfLastWeek), lte(pcvProcessDetails.eventDt, startOfWeek)));
+      .where(and(gte(pcvProcessDetails.eventDt, startOfLastWeek), lt(pcvProcessDetails.eventDt, startOfWeek)));
     const lastWeekTotal = lastWeekRecords.length;
     const lastWeekActive = lastWeekRecords.filter(r => !r.idleStatus).length;
     const lastWeekProductivity = lastWeekTotal > 0 ? Math.round((lastWeekActive / lastWeekTotal) * 100) : 0;
@@ -234,13 +231,15 @@ export class PostgresStorage implements IStorage {
     const activeTimeHours = Math.round((totalLapsedSeconds / 3600) * 10) / 10;
     const avgActiveHoursPerDay = activeEmployees > 0 ? Math.round((activeTimeHours / 7 / activeEmployees) * 10) / 10 : 0;
 
-    // Active time trend
+    // Active time trend - use agents active in last week for fair comparison
+    const lastWeekAgentGuids = new Set(lastWeekRecords.filter(r => r.agentGuid).map(r => r.agentGuid));
+    const lastWeekActiveEmployees = lastWeekAgentGuids.size;
     const lastWeekLapsedSeconds = lastWeekRecords.reduce((sum, r) => {
       const lapsed = parseInt(r.lapsedTime || '0', 10);
       return sum + (isNaN(lapsed) ? 0 : lapsed);
     }, 0);
     const lastWeekActiveHours = lastWeekLapsedSeconds / 3600;
-    const lastWeekAvgHours = activeEmployees > 0 ? lastWeekActiveHours / 7 / activeEmployees : 0;
+    const lastWeekAvgHours = lastWeekActiveEmployees > 0 ? lastWeekActiveHours / 7 / lastWeekActiveEmployees : 0;
     const activeTimeTrend = Math.round((avgActiveHoursPerDay - lastWeekAvgHours) * 10) / 10;
 
     // Count alerts (sleep events with unusual patterns - long durations)
