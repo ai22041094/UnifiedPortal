@@ -95,7 +95,10 @@ import {
   Code,
   CheckCircle2,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { EpmUser } from "@shared/schema";
 
 interface MenuItem {
   id: string;
@@ -192,6 +195,7 @@ const menuItems: MenuItem[] = [
     title: "Admin Settings",
     icon: Settings,
     children: [
+      { id: "epm.admin-settings.user-management", title: "User Management", icon: UserCog, href: "/apps/epm/admin-settings/user-management" },
       { id: "epm.admin-settings.app-categorization", title: "App Categorization", icon: Tags, href: "/apps/epm/admin-settings/app-categorization" },
       { id: "epm.admin-settings.system-configuration", title: "System Configuration", icon: Settings, href: "/apps/epm/admin-settings/system-configuration" },
       { id: "epm.admin-settings.device-agent", title: "Device Agent Settings", icon: Cpu, href: "/apps/epm/admin-settings/device-agent" },
@@ -638,6 +642,558 @@ function ApiKeysContent() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+const epmUserFormSchema = z.object({
+  empId: z.string().min(1, "Employee ID is required").max(50),
+  userName: z.string().min(1, "User name is required").max(100),
+  emailId: z.string().email("Invalid email address").max(100),
+  userType: z.string().min(1, "User type is required").max(50),
+  userRole: z.string().max(100).optional().nullable(),
+  locCode: z.string().min(1, "Location code is required").max(50),
+  location: z.string().max(100).optional().nullable(),
+  depCode: z.string().min(1, "Department code is required").max(50),
+  managerCode: z.string().max(100).optional().nullable(),
+  managerName: z.string().max(100).optional().nullable(),
+  managerEmailId: z.string().email().max(100).optional().nullable().or(z.literal("")),
+  designationCode: z.string().max(100).optional().nullable(),
+  contactNo: z.string().max(25).optional().nullable(),
+  userRemarks: z.string().max(250).optional().nullable(),
+  domainType: z.string().max(25).optional().nullable(),
+  status: z.string().max(10).optional().default("Active"),
+});
+
+type EpmUserFormData = z.infer<typeof epmUserFormSchema>;
+
+interface EpmUsersResponse {
+  users: EpmUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+function UserManagementContent() {
+  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<EpmUser | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+
+  const form = useForm<EpmUserFormData>({
+    resolver: zodResolver(epmUserFormSchema),
+    defaultValues: {
+      empId: "",
+      userName: "",
+      emailId: "",
+      userType: "Employee",
+      userRole: "",
+      locCode: "",
+      location: "",
+      depCode: "",
+      managerCode: "",
+      managerName: "",
+      managerEmailId: "",
+      designationCode: "",
+      contactNo: "",
+      userRemarks: "",
+      domainType: "",
+      status: "Active",
+    },
+  });
+
+  const { data, isLoading } = useQuery<EpmUsersResponse>({
+    queryKey: ["/api/epm/users", page, searchTerm, statusFilter],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: EpmUserFormData) => {
+      const res = await apiRequest("POST", "/api/epm/users", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/epm/users"] });
+      toast({ title: "Success", description: "User created successfully" });
+      setIsDialogOpen(false);
+      form.reset();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create user", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: number; data: Partial<EpmUserFormData> }) => {
+      const res = await apiRequest("PATCH", `/api/epm/users/${userId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/epm/users"] });
+      toast({ title: "Success", description: "User updated successfully" });
+      setIsDialogOpen(false);
+      setEditingUser(null);
+      form.reset();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update user", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiRequest("DELETE", `/api/epm/users/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/epm/users"] });
+      toast({ title: "Success", description: "User deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete user", variant: "destructive" });
+    },
+  });
+
+  const handleOpenCreate = () => {
+    setEditingUser(null);
+    form.reset({
+      empId: "",
+      userName: "",
+      emailId: "",
+      userType: "Employee",
+      userRole: "",
+      locCode: "",
+      location: "",
+      depCode: "",
+      managerCode: "",
+      managerName: "",
+      managerEmailId: "",
+      designationCode: "",
+      contactNo: "",
+      userRemarks: "",
+      domainType: "",
+      status: "Active",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEdit = (user: EpmUser) => {
+    setEditingUser(user);
+    form.reset({
+      empId: user.empId,
+      userName: user.userName,
+      emailId: user.emailId,
+      userType: user.userType,
+      userRole: user.userRole || "",
+      locCode: user.locCode,
+      location: user.location || "",
+      depCode: user.depCode,
+      managerCode: user.managerCode || "",
+      managerName: user.managerName || "",
+      managerEmailId: user.managerEmailId || "",
+      designationCode: user.designationCode || "",
+      contactNo: user.contactNo || "",
+      userRemarks: user.userRemarks || "",
+      domainType: user.domainType || "",
+      status: user.status || "Active",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const onSubmit = (data: EpmUserFormData) => {
+    if (editingUser) {
+      updateMutation.mutate({ userId: editingUser.userId, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold">User Management</h2>
+          <p className="text-muted-foreground">Manage EPM users and their details</p>
+        </div>
+        <Button onClick={handleOpenCreate} data-testid="button-create-user">
+          <Plus className="h-4 w-4 mr-2" />
+          Add User
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+            className="pl-10"
+            data-testid="input-search-users"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : !data?.users?.length ? (
+            <div className="p-12 text-center">
+              <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No Users Found</h3>
+              <p className="text-muted-foreground">Create your first EPM user to get started.</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Emp ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.users.map((user) => (
+                      <TableRow key={user.userId} data-testid={`row-user-${user.userId}`}>
+                        <TableCell className="font-medium">{user.empId}</TableCell>
+                        <TableCell>{user.userName}</TableCell>
+                        <TableCell>{user.emailId}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{user.userType}</Badge>
+                        </TableCell>
+                        <TableCell>{user.locCode}</TableCell>
+                        <TableCell>{user.depCode}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.status === "Active" ? "default" : "secondary"}>
+                            {user.status || "Active"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(user)}
+                              data-testid={`button-edit-user-${user.userId}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`button-delete-user-${user.userId}`}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete User?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete the user "{user.userName}". This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteMutation.mutate(user.userId)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {data.totalPages > 1 && (
+                <div className="flex items-center justify-between gap-4 p-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Page {data.page} of {data.totalPages} ({data.total} total)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      data-testid="button-prev-page"
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= data.totalPages}
+                      data-testid="button-next-page"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
+            <DialogDescription>
+              {editingUser ? "Update user details below." : "Fill in the details to create a new EPM user."}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="empId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee ID *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="EMP001" {...field} data-testid="input-emp-id" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="userName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>User Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} data-testid="input-user-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="emailId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email *</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john@example.com" {...field} data-testid="input-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="userType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>User Type *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-user-type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Employee">Employee</SelectItem>
+                          <SelectItem value="Manager">Manager</SelectItem>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="Contractor">Contractor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="locCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Code *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="LOC001" {...field} data-testid="input-loc-code" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="New York Office" {...field} value={field.value || ""} data-testid="input-location" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="depCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department Code *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="DEP001" {...field} data-testid="input-dep-code" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="userRole"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>User Role</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Developer" {...field} value={field.value || ""} data-testid="input-user-role" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="designationCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Designation</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Senior Developer" {...field} value={field.value || ""} data-testid="input-designation" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contactNo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1234567890" {...field} value={field.value || ""} data-testid="input-contact" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="managerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Manager Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Jane Smith" {...field} value={field.value || ""} data-testid="input-manager-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="managerEmailId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Manager Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="manager@example.com" {...field} value={field.value || ""} data-testid="input-manager-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="domainType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Domain Type</FormLabel>
+                      <FormControl>
+                        <Input placeholder="IT" {...field} value={field.value || ""} data-testid="input-domain" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "Active"}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Active">Active</SelectItem>
+                          <SelectItem value="Inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="userRemarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Additional notes..." {...field} value={field.value || ""} data-testid="input-remarks" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-user">
+                  {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingUser ? "Update User" : "Create User"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1454,6 +2010,8 @@ export default function EPM() {
                 <IngestedDataContent />
               ) : location === "/apps/epm/integrations/api-documentation" ? (
                 <ApiDocumentationContent />
+              ) : location === "/apps/epm/admin-settings/user-management" ? (
+                <UserManagementContent />
               ) : (
                 <PageInProgress title={pageTitle} />
               )}
